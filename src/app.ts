@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { memCache } from 'hono-mem-cache';
-import { env, getRuntimeKey } from 'hono/adapter';
+import { getRuntimeKey } from 'hono/adapter';
+import { getEnv } from './utils/env';
 import { methodNotAllowed } from 'hono/method-not-allowed';
 import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
@@ -28,7 +29,7 @@ app.use(
     '*',
     cors({
         origin: (origin: string, c) => {
-            const { ALLOWED_ORIGINS } = env<{ ALLOWED_ORIGINS: string }>(c);
+            const { ALLOWED_ORIGINS } = getEnv<{ ALLOWED_ORIGINS: string }>(c);
             if (!ALLOWED_ORIGINS) {
                 return origin; // 当未配置 ALLOWED_ORIGINS 时，允许所有跨域请求（*）
             }
@@ -95,15 +96,15 @@ app.use(
 // 当未配置 HOME_REDIRECT_URL 时，默认重定向到项目文档地址
 app.get('/migu', c => {
     return c.redirect(
-        env<{ HOME_REDIRECT_URL: string }>(c).HOME_REDIRECT_URL || 'https://domdkw.github.io/miguMusic-api-enhanced/'
+        getEnv<{ HOME_REDIRECT_URL: string }>(c).HOME_REDIRECT_URL || 'https://domdkw.github.io/miguMusic-api-enhanced/'
         ,301
     );
 });
 
 // 健康检查
 app.get('/migu/status', c => {
-    const USE_DATABASE = env<{ USE_DATABASE: string }>(c).USE_DATABASE === 'true';
-    const ALLOWED_ORIGINS = env<{ ALLOWED_ORIGINS: string }>(c).ALLOWED_ORIGINS || '';
+    const USE_DATABASE = getEnv<{ USE_DATABASE: string }>(c).USE_DATABASE === 'true';
+    const ALLOWED_ORIGINS = getEnv<{ ALLOWED_ORIGINS: string }>(c).ALLOWED_ORIGINS || '';
 
     return c.json({
         message: 'Migu API Enhanced',

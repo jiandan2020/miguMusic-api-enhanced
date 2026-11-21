@@ -5,7 +5,7 @@ import { getUrlH5V24 } from '../modules/url_h5v2.4';
 import { getDLUrlV1 } from '../modules/url_dl_v1';
 
 import { saveUrlToDB, getUrlFromDB } from '../middleware/urlSaver';
-import { env } from 'hono/adapter';
+import { getEnv } from '../utils/env';
 
 
 export default function (app: Hono) {
@@ -45,7 +45,7 @@ export default function (app: Hono) {
         const data = await getUrlH5V24(contentId, copyrightId, toneFlag);
 
         // 是否自动存储 URL 到数据库
-        const AUTO_STORE_URL = env<{ AUTO_STORE_URL: string }>(c).AUTO_STORE_URL === 'true';
+        const AUTO_STORE_URL = getEnv<{ AUTO_STORE_URL: string }>(c).AUTO_STORE_URL === 'true';
         if (AUTO_STORE_URL) {
             const url = data?.data?.url || '';
             if (url !== '') {
@@ -62,7 +62,7 @@ export default function (app: Hono) {
     app.get('/url/db', async (c) => {
 
         // 是否使用数据库
-        const USE_DATABASE = env<{ USE_DATABASE: string }>(c).USE_DATABASE === 'true';
+        const USE_DATABASE = getEnv<{ USE_DATABASE: string }>(c).USE_DATABASE === 'true';
         if (!USE_DATABASE) {
             return c.json({ success: false, error: '数据库未启用' }, 400);
         }

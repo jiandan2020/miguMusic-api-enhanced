@@ -1,4 +1,4 @@
-import { env } from 'hono/adapter';
+import { getEnv } from '../utils/env';
 import type { Context, Next } from 'hono';
 
 /**
@@ -9,19 +9,13 @@ import type { Context, Next } from 'hono';
  * - 以下公开路径不鉴权：/migu（重定向到文档）、/migu/status、/migu/version。
  * - 必须放在缓存中间件之前，否则缓存可能把已鉴权的响应直接返回给未带 Key 的请求。
  *
- * 注意：不要用 hono/adapter 的 env() 读 API_KEY。env() 只在 Cloudflare
- * Workers（workerd）下返回绑定（c.env），在 EdgeOne 上运行时 getRuntimeKey()
- * 是 "other"，env() 直接返回 {}。EdgeOne 控制台配的环境变量在 c.env 里，
- * 所以这里优先读 c.env，再回退到 env()（本地 Node 用 process.env）。
+ * 环境变量用 getEnv() 读（见 src/utils/env.ts）：hono/adapter 的 env()
+ * 只在 Cloudflare Workers（workerd）下返回绑定，在 EdgeOne 上直接返回 {}。
  */
 const PUBLIC_PATHS = new Set(['/migu', '/migu/status', '/migu/version']);
 
 function getApiKey(c: Context): string {
-    const fromBindings = (c.env as Record<string, string> | undefined)?.API_KEY || '';
-    if (fromBindings) {
-        return fromBindings;
-    }
-    return env<{ API_KEY: string }>(c).API_KEY || '';
+    return getEnv<{ API_KEY: string }>(c).API_KEY || '';
 }
 
 export async function apiAuth(c: Context, next: Next) {
