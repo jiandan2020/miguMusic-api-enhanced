@@ -3,7 +3,6 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { memCache } from 'hono-mem-cache';
 import { env, getRuntimeKey } from 'hono/adapter';
-import { etag, RETAINED_304_HEADERS } from 'hono/etag';
 import { methodNotAllowed } from 'hono/method-not-allowed';
 import apiRoutes from './routers/index';
 
@@ -52,14 +51,11 @@ app.use(
     })
 );
 
-// 配置 ETag 中间件
-app.use(
-    '*',
-    etag({
-        retainedHeaders: [...RETAINED_304_HEADERS],
-    })
-);
-
+// ETag 中间件已移除（EdgeOne 专用）：Hono 的 etag 在计算摘要时读取响应体
+// 数据流，假设每个数据块都是 Uint8Array 并调用 .subarray()；而 EdgeOne
+// 的流给出的是 ArrayBuffer（有 byteLength、没有 subarray），导致每个
+// GET 请求都在这里以 "chunk.subarray is not a function" 崩掉。ETag 只是
+// 缓存优化（304），去掉不影响接口本身。
 // cache control
 app.use('*', (c, next) => {
     c.header('Cache-Control', `private, no-cache`); //必走304
