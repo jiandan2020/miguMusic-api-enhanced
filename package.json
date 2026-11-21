@@ -68,7 +68,7 @@
     "build": "tsup",
     "build:node": "node build-node.mjs",
     "typecheck": "tsc --project tsconfig.sdk.json",
-    "build:edgeone": "esbuild functions/[[default]].ts --bundle --platform=browser --target=es2022 --format=esm --outfile=functions/[[default]].js",
+    "build:edgeone": "esbuild functions/[[default]].ts --bundle --platform=browser --target=es2022 --format=esm --outfile=functions/[[default]].js --alias:db0/connectors/bun-sqlite=./src/stubs/empty.ts",
     "start": "node dist-server/index.js",
     "start:bun": "bun run src/adapters/bun.ts",
     "deploy:cf": "wrangler deploy --minify",
