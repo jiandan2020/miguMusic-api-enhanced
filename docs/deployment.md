@@ -30,6 +30,7 @@ USE_DATABASE=true
 | `USE_DATABASE` | 是否启用数据库存储 URL 功能 | `false` | `true` 或 `false` |
 | `HOME_REDIRECT_URL` | 首页重定向地址 | `https://domdkw.github.io/miguMusic-api-enhanced/` | - |
 | `AUTO_STORE_URL` | 自动存储 h5v2.4 URL接口返回值 到数据库 | `false` | - |
+| `API_KEY` | API 鉴权密钥。设置后调用接口需带 `Authorization: Bearer <key>` 或 `?key=<key>`，未设置时不鉴权；`/migu`、`/migu/status`、`/migu/version` 始终公开 | 未设置（公开访问） | - |
 
 ?> `AUTO_STORE_URL` / `USE_DATABASE` 需要设置 === `true` 才生效。
 

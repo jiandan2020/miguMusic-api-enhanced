@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { memCache } from 'hono-mem-cache';
 import { env, getRuntimeKey } from 'hono/adapter';
 import { methodNotAllowed } from 'hono/method-not-allowed';
+import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
 
 // 通过 import 引入 package.json，esbuild / tsup 在构建时会将 JSON 内联到产物中
@@ -69,6 +70,13 @@ app.use(
         })
     })
 )
+
+/**
+ * API 鉴权中间件
+ * 必须放在缓存中间件之前（见 src/middleware/auth.ts 的说明）。
+ * 注意：CORS 中间件在它前面，所以浏览器跨域预检（OPTIONS）不受鉴权影响。
+ */
+app.use('*', apiAuth);
 
 /**
  * 配置内存缓存中间件
