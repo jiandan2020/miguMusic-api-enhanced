@@ -4,7 +4,7 @@ import { getUrlV2 } from '../modules/url_v2';
 import { getUrlH5V24 } from '../modules/url_h5v2.4';
 import { getDLUrlV1 } from '../modules/url_dl_v1';
 
-import { saveUrlToDB, getUrlFromDB } from '../middleware/urlSaver';
+import { saveUrlToDB } from '../middleware/urlSaver';
 import { getEnv } from '../utils/env';
 import { resolvePacmToken } from '../utils/pacmSession';
 
@@ -58,34 +58,5 @@ export default function (app: Hono) {
         if(c.req.query('302') !== undefined)
             return c.redirect(data?.data?.url || '', 302);
         return c.json({ success: true, ...data });
-    });
-
-    app.get('/url/db', async (c) => {
-
-        // 是否使用数据库
-        const USE_DATABASE = getEnv<{ USE_DATABASE: string }>(c).USE_DATABASE === 'true';
-        if (!USE_DATABASE) {
-            return c.json({ success: false, error: '数据库未启用' }, 400);
-        }
-        // ===END===
-
-        const contentId = c.req.query('contentId') || '';
-
-        if (!contentId) {
-            return c.json({ success: false, error: 'contentId 参数不能为空' }, 400);
-        }
-
-        const { success, url } = await getUrlFromDB(contentId);
-
-        // 统一返回结构: { success: boolean, data?: { url: string }, error?: string }
-        if (!success) {
-            const data = await getUrlV1(contentId, '', 'PQ', '2');
-            if(c.req.query('302') !== undefined)
-                return c.redirect(data?.data?.url || '', 302);
-            return c.json({ success: true, ...data, hit: false });
-        }
-        if(c.req.query('302') !== undefined)
-            return c.redirect(url || '', 302);
-        return c.json({ success: true, data: { url }, hit: true });
     });
 }

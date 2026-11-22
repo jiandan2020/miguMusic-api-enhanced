@@ -17,8 +17,8 @@
 ALLOWED_ORIGINS=*
 
 # 是否使用数据库存储 URL
-# 启用后，/url/h5v2.4 接口会自动保存音乐链接到数据库
-# 通过 /url/db 接口可以查询已保存的链接
+# 启用后，/url/h5v2.4 接口会自动保存音乐链接到数据库（需同时开 AUTO_STORE_URL）
+# /url/db 查询接口已移除
 USE_DATABASE=true
 ```
 
@@ -39,7 +39,9 @@ USE_DATABASE=true
 登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
 以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量；
 接口返回里带了新的 pacmtoken 时自动写回（上游文档也写明返回的 pacmtoken
-字段就是用来拿刷新后的登录凭证的）；定时任务每 6 小时验一次，活着就
+字段就是用来拿刷新后的登录凭证的）。目前只有 `/user/info` 与
+`/user/info/phone` 会在返回里带新的 pacmtoken 并写回；`/url/v2` 只用
+存量 token 做回退，不写回。定时任务每 6 小时验一次，活着就
 再调 `/migu/user/info/phone` 主动轮换一次 token（它会在响应 cookie 里
 带回新的 pacmtoken；管理页面的“立即刷新”按钮也是调这个接口）。
 **不自动重新登录**：pacmtoken 死了就报 `session_dead`，等手动重新登录
@@ -197,16 +199,13 @@ pnpm run dev
 
 ## 数据库配置
 
-`USE_DATABASE=true`：允许通过 `/url/db` 接口查询已保存的音乐链接。
+`USE_DATABASE=true`：启用数据库（`/url/db` 查询接口已移除）。
 
 `AUTO_STORE_URL=true`：自动保存音乐链接到数据库
 
 `bun`、`node.js ` 和其他运行时的数据库，存储在 `./sql/url.sqlite.db` 。共用一个数据库文件。
 
-数据库功能主要用于：
-
-- 缓存音乐链接，减少重复请求
-- 通过 [/url/db](api/url.md#数据库url接口) 接口查询历史记录
+数据库目前只写不读：`/url/h5v2.4` 在 `AUTO_STORE_URL=true` 时把音乐链接保存到数据库；`/url/db` 查询接口已移除。
 
 ## 下一步
 

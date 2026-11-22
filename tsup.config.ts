@@ -9,7 +9,6 @@ export default defineConfig({
         'index': 'src/exports/index.ts',
         'login/index': 'src/exports/login.ts',
         'utils/index': 'src/exports/utils.ts',
-        'activity/index': 'src/exports/activity.ts',
 
         'mrc/index': 'src/modules/mrc.ts',
     },

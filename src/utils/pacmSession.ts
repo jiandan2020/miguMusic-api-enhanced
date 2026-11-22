@@ -6,7 +6,8 @@ import { checkToken } from '../modules/passport_checkToken';
  *
  * - 登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
  *   以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量。
- * - 44 个会带 `newPacmToken` 的接口返回了新 token 时，写回 KV（被动更新）。
+ * - 目前只有 `/user/info` 与 `/user/info/phone` 会在返回里带 `newPacmToken`，
+ *   返回了新 token 时写回 KV（被动更新）；`/url/v2` 只用存量 token 做回退，不写回。
  * - 定时 / 手动刷新时：先 checkToken 验活；活着就更新 lastCheckedAt；
  *   死了就报 session_dead，等用户手动重新登录（不再拿 ST 换新：实测
  *   ST 换 token 只能换一次，登录时已经换过一次了，存着的 ST 换不到，
