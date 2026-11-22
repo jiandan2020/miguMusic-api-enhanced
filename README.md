@@ -2,10 +2,8 @@
 
 咪咕 + 网易云音乐 API，二合一，部署在 EdgeOne 上。
 
-- 线上地址：https://migu.api.xzccs.top
 - 咪咕 API：`/migu`（v2.28.1，Hono）
 - 网易云 API：`/netease`（v4.41.1，Hono，源码来自 [NeteaseCloudMusicApiEnhanced/api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)）
-- 管理页：https://migu.api.xzccs.top/admin（咪咕 + 网易云双分区）
 
 本仓库是 [Domdkw/miguMusic-api-enhanced](https://github.com/Domdkw/miguMusic-api-enhanced) 的 Fork，按 EdgeOne 边缘运行时做了改造，并把网易云合了进来。只保留了在用的接口，其余已删除。
 
@@ -46,21 +44,12 @@ Authorization: Bearer <API_KEY>
 ?key=<API_KEY>
 ```
 
-公开路径（不用 Key）：`/migu`、`/migu/status`、`/migu/version`、`/netease`、`/netease/status`、`/netease/version`、`/admin`、`/admin/`、`/miguadmin`（301 跳到 `/admin`）。
-
-## 管理页 `/admin`
-
-统一管理页，输一次 Key 即可，分两个区：
-
-- **咪咕**：会话状态（pacmtoken 保活）、当前用户、会员等级、播放测试（搜歌、选音质、试播）、接口状态
-- **网易云**：登录状态、搜索与取链测试、接口状态
-
-网易云登录要在管理页上看状态，登录本身走接口：扫码（`/login/qr/key` → `/login/qr/create` → `/login/qr/check`）或手机号（`/login/cellphone`）。登录成功后会话自动存进 KV，后续请求不用再带 cookie。
+公开路径（不用 Key）：`/migu`、`/migu/status`、`/migu/version`、`/netease`、`/netease/status`、`/netease/version`。
 
 ## 登录态与保活
 
 - **咪咕 pacmtoken**：存在 EdgeOne KV（绑定变量名 `MIGU_KV`，键 `pacm_session`）。定时任务每 6 小时验活并轮换（`/migu/passport/refresh` + `/migu/user/info/phone`）。token 死了不会自动重新登录，需手动重登。
-- **网易云登录态**：登录成功后 cookie 自动存进 EdgeOne KV（绑定变量名 `NETEASE_KV`，键 `netease_user_cookie`），请求没带 cookie 时自动注入；退出登录时清除。
+- **网易云登录态**：登录走接口，扫码（`/login/qr/key` → `/login/qr/create` → `/login/qr/check`）或手机号（`/login/cellphone`）。登录成功后 cookie 自动存进 EdgeOne KV（绑定变量名 `NETEASE_KV`，键 `netease_user_cookie`），请求没带 cookie 时自动注入；退出登录时清除。
 
 ## 部署（EdgeOne）
 
