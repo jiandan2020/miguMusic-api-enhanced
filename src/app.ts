@@ -9,6 +9,7 @@ import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
 import neteaseRoutes from './netease/router';
 import { adminPageHtml } from './adminPage';
+import { isKvAvailable as isMiguKvAvailable } from './utils/pacmSession';
 
 // 通过 import 引入 package.json，esbuild / tsup 在构建时会将 JSON 内联到产物中
 // 这样在 Node、Cloudflare Workers、Vercel Edge、Deno、EdgeOne 等所有 bundler 平台都能直接读取版本号
@@ -117,6 +118,7 @@ app.get('/migu/status', c => {
         runtime: getRuntimeKey(),
         dbEnabled: USE_DATABASE,
         allowedOrigins: ALLOWED_ORIGINS,
+        kvBound: isMiguKvAvailable(),
     });
 });
 

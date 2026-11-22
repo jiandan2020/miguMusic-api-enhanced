@@ -164,8 +164,10 @@ audio { width: 100%; margin-top: 10px; }
 <h2>登录状态</h2>
 <div id="neLoginBody"><p class="muted">加载中…</p></div>
 <div class="row" style="margin-top:12px;">
+<button id="neRefreshBtn">立即刷新</button>
 <button id="neLogoutBtn" class="secondary">退出登录</button>
 </div>
+<p class="muted" id="neRefreshMsg"></p>
 <p class="muted">登录请走接口：/netease/login/cellphone（手机号）或 /netease/login/qr/key → /login/qr/create → /login/qr/check（扫码）。</p>
 </section>
 <section class="card">
@@ -353,7 +355,8 @@ async function loadStatus(){
     $('statusBody').innerHTML = '<div class="kv"><span>版本</span><span>' + esc(j.version || '-') + '</span></div>'
       + '<div class="kv"><span>运行环境</span><span>' + esc(j.runtime || '-') + '</span></div>'
       + '<div class="kv"><span>数据库</span><span>' + (j.dbEnabled ? '已启用' : '未启用') + '</span></div>'
-      + '<div class="kv"><span>允许跨域</span><span>' + esc(j.allowedOrigins || '全部') + '</span></div>';
+      + '<div class="kv"><span>允许跨域</span><span>' + esc(j.allowedOrigins || '全部') + '</span></div>'
+      + '<div class="kv"><span>KV（MIGU_KV）</span><span>' + (j.kvBound === true ? '<span class="pill ok">已绑定</span>' : (j.kvBound === false ? '<span class="pill err">未绑定</span>' : '-')) + '</span></div>';
   } catch(e){
     $('statusBody').innerHTML = '<p class="error">加载失败</p>';
   }
@@ -641,6 +644,37 @@ async function doNeLogout(){
   loadNeLoginStatus();
   loadNeMember();
 }
+async function doNeRefresh(){
+  // 用 /login/refresh 续期网易云登录态（返回新 cookie，服务端自动存进 KV），
+  // 再刷新登录状态与会员信息；登录已失效时续不回来，照实显示。
+  var msg = $('neRefreshMsg');
+  msg.textContent = '刷新中…';
+  msg.className = 'muted';
+  $('neRefreshBtn').disabled = true;
+  var ok = false;
+  var failInfo = '';
+  try {
+    var j = await api('/netease/login/refresh');
+    if(j && j.code === 200){ ok = true; }
+    else if(j && j.msg){ failInfo = j.msg; }
+    else if(j && j.message){ failInfo = j.message; }
+    else { failInfo = '续期失败'; }
+  } catch(e){
+    if(e && e.code === 401){ failInfo = 'Key 已失效，请重新进入'; }
+    else { failInfo = '请求失败'; }
+  } finally {
+    $('neRefreshBtn').disabled = false;
+  }
+  if(ok){
+    msg.textContent = '已刷新，登录态已续期';
+    msg.className = 'success';
+  } else {
+    msg.textContent = '刷新失败（' + failInfo + '）';
+    msg.className = 'error';
+  }
+  loadNeLoginStatus();
+  loadNeMember();
+}
 function neSongTitle(s){
   var artists = (s.artists || s.ar || []).map(function(a){ return a.name || ''; }).filter(Boolean).join(' / ');
   var album = (s.album && s.album.name) || (s.al && s.al.name) || '';
@@ -700,8 +734,7 @@ async function getNePlayUrl(autoPlay){
   var ep = $('neEndpointSel').value;
   var level = $('neLevelSel').value;
   var id = neSelectedSong.id;
-  var q = 'id=' + encodeURIComponent(id);
-  if(ep === 'url/v1'){ q += '&level=' + encodeURIComponent(level); }
+  var q = 'id=' + encodeURIComponent(id) + '&level=' + encodeURIComponent(level);
   $('nePlayErr').textContent = '';
   $('nePlayResult').innerHTML = '<p class="muted">获取中…</p>';
   $('neAudioWrap').innerHTML = '';
@@ -713,7 +746,7 @@ async function getNePlayUrl(autoPlay){
       return;
     }
     var br = d.br ? Math.round(d.br / 1000) + 'kbps' : '-';
-    $('nePlayResult').innerHTML = '<div class="kv"><span>接口</span><span>song/' + esc(ep) + (ep === 'url/v1' ? ' · ' + esc(level) : '') + '</span></div>'
+    $('nePlayResult').innerHTML = '<div class="kv"><span>接口</span><span>song/' + esc(ep) + ' · ' + esc(level) + '</span></div>'
       + '<div class="kv"><span>码率</span><span>' + esc(br) + '</span></div>'
       + '<div class="kv"><span>格式</span><span>' + esc(d.type || '-') + '</span></div>'
       + '<div class="row" style="margin-top:8px;"><input type="text" id="nePlayUrlInput" readonly value="' + esc(d.url) + '"><button id="neCopyBtn" class="secondary">复制链接</button></div>';
@@ -782,6 +815,7 @@ $('refreshBtn').addEventListener('click', doRefresh);
 $('logoutBtn').addEventListener('click', doLogout);
 $('exitBtn').addEventListener('click', exitAdmin);
 $('neLogoutBtn').addEventListener('click', doNeLogout);
+$('neRefreshBtn').addEventListener('click', doNeRefresh);
 $('neSearchBtn').addEventListener('click', doNeSearch);
 $('neSearchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doNeSearch(); } });
 $('neGetUrlBtn').addEventListener('click', function(){ getNePlayUrl(false); });

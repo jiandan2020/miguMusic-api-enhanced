@@ -1,0 +1,32 @@
+# 定时刷新 KV 里存的网易云登录态（MUSIC_U 保活）
+#
+# 每 6 小时调一次 /netease/login/refresh 续期登录态：
+#   - 续期成功（code 200）→ 新 cookie 由服务端自动写回 KV，本次完成；
+#   - 续期失败（登录已失效）→ 本任务失败，提醒手动重新登录一次（扫码或手机号）。
+# 刷新路径里没有任何自动重新登录；失败时不重试、不发短信。
+#
+# 需要在仓库 Settings → Secrets and variables → Actions 里加：
+#   MIGU_API_KEY：EdgeOne 控制台里配的 API_KEY（调用接口用的鉴权密钥，与咪咕共用）
+name: 刷新网易云登录态
+
+on:
+  schedule:
+    # 每 6 小时的第 37 分钟（UTC），与咪咕的刷新（第 17 分钟）错开
+    - cron: '37 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 续期网易云登录态
+        run: |
+          resp=$(curl -s -m 60 "https://migu.api.xzccs.top/netease/login/refresh?key=${{ secrets.MIGU_API_KEY }}")
+          echo "$resp"
+          if echo "$resp" | grep -q '"code":200'; then
+            echo "网易云登录态已续期"
+          else
+            echo "网易云登录态续期失败（可能需要手动重新登录一次）"
+            exit 1
+          fi
