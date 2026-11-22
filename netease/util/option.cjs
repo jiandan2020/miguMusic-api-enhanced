@@ -1,5 +1,10 @@
 const { getCookieHeader, hasCookie } = require('./index.cjs')
 
+// EdgeOne 边缘运行时没有 `process` 全局；直接读 process.env 会抛
+// ReferenceError，进而被路由包成 404。没有 process 时当空对象处理。
+const procEnv =
+  (typeof process !== 'undefined' && process && process.env) || {}
+
 const createOption = (query, crypto = '', checkToken = false) => {
   const headerCookie = getCookieHeader(query.headers)
 
@@ -9,12 +14,12 @@ const createOption = (query, crypto = '', checkToken = false) => {
       ? query.cookie
       : hasCookie(headerCookie)
         ? headerCookie
-        : process.env.NETEASE_COOKIE,
+        : procEnv.NETEASE_COOKIE,
     ua: query.ua || '',
     proxy: query.proxy,
     realIP: query.realIP,
     randomCNIP:
-      process.env.ENABLE_RANDOM_CN_IP === 'true'
+      procEnv.ENABLE_RANDOM_CN_IP === 'true'
         ? !['false', false].includes(query.randomCNIP)
         : ['true', true].includes(query.randomCNIP),
     e_r: query.e_r || undefined,
