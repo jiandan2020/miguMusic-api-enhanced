@@ -1,22 +1,26 @@
 /**
- * /miguadmin 管理页面（单文件 HTML，内联 CSS/JS，无外部依赖）。
+ * 统一管理页面 /admin（单文件 HTML，内联 CSS/JS，无外部依赖）。
  *
  * - 样式跟随一言 /stats（hitokoto.xzccs.top/stats）的设计变量：靛蓝主色
  *   #6366F1、浅色背景、圆角卡片、胶囊状态徽章。
+ * - 分两个区：咪咕（会话、用户、会员、播放测试、接口状态）与网易云
+ *   （登录状态、搜索与取链测试、接口状态）。/miguadmin 301 跳转到 /admin。
  * - 页面本身公开（见 src/middleware/auth.ts 的 PUBLIC_PATHS），否则没 Key
  *   会直接返回 401 JSON、连输入框都看不到；真正的数据请求都要带 Key，
  *   没通过校验什么都看不到、也调不动。
- * - Key 只存在 sessionStorage（关标签页即清除），不写进页面、不写 cookie。
- * - 所有数据都用 KV 里存着的 pacmtoken，不用再传 pacmtoken 参数。
- * - 会员等级取自 /migu/user/info 的 userMemberInfos 与 userLevelInfo；
+ * - Key 只存在 sessionStorage（关标签页即清除）或 localStorage（勾选记住），
+ *   不写进页面、不写 cookie。
+ * - 咪咕的数据都用 KV 里存着的 pacmtoken，不用再传 pacmtoken 参数。
+ * - 咪咕会员等级取自 /migu/user/info 的 userMemberInfos 与 userLevelInfo；
  *   播放测试可自选接口（v1 / v2 / h5v2.4）与音质（toneFlag）。
+ * - 网易云取链可自选接口（song/url v2 / song/url/v1）与音质等级。
  */
 export const adminPageHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>咪咕 API 管理</title>
+<title>音乐 API 管理</title>
 <style>
 /* 样式跟随一言 /stats（hitokoto.xzccs.top/stats）的设计变量：靛蓝主色、浅色背景、圆角卡片。 */
 :root {
@@ -54,6 +58,7 @@ body { margin: 0; font-family: var(--font-sans); background: var(--color-backgro
 main { max-width: 720px; margin: 0 auto; padding: 16px; }
 .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .card h2 { margin: 0 0 12px; font-size: 17px; }
+.section-title { margin: 24px 0 12px; font-size: 19px; border-bottom: 2px solid var(--color-primary); padding-bottom: 6px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 input[type=text], input[type=password], select { font-size: 15px; padding: 9px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
 input[type=text]:focus, input[type=password]:focus, select:focus { outline: 2px solid var(--color-primary); outline-offset: 0; }
@@ -82,18 +87,19 @@ button.secondary:hover { background: var(--color-primary-container); }
 .member { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
 .member img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; }
 audio { width: 100%; margin-top: 10px; }
+.lyricBox { max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; font-size: 13px; line-height: 1.6; color: var(--color-text-secondary); background: var(--color-surface-variant); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px 12px; margin-top: 8px; }
 </style>
 </head>
 <body>
 <main>
 <header class="page-head">
-<p class="eyebrow">MIGU · ADMIN</p>
-<h1>咪咕 API 管理</h1>
-<p class="intro">migu.api.xzccs.top · 会话、用户与播放测试</p>
+<p class="eyebrow">MUSIC · ADMIN</p>
+<h1>音乐 API 管理</h1>
+<p class="intro">migu.api.xzccs.top · 咪咕与网易云</p>
 </header>
 <section class="card" id="gate">
 <h2>输入 Key 进入</h2>
-<p class="muted">Key 与 EdgeOne 控制台的 API_KEY 一致，只保存在当前标签页，关闭即清除。</p>
+<p class="muted">Key 与 EdgeOne 控制台的 API_KEY 一致，咪咕与网易云共用，只保存在当前标签页，关闭即清除。</p>
 <div class="row">
 <input type="password" id="keyInput" placeholder="API Key" autocomplete="off">
 <button id="enterBtn">进入</button>
@@ -102,6 +108,7 @@ audio { width: 100%; margin-top: 10px; }
 <p class="error" id="gateErr"></p>
 </section>
 <div id="dash" hidden>
+<h2 class="section-title">咪咕</h2>
 <section class="card">
 <h2>会话状态</h2>
 <div id="sessionBody"><p class="muted">加载中…</p></div>
@@ -152,6 +159,47 @@ audio { width: 100%; margin-top: 10px; }
 <h2>接口状态</h2>
 <div id="statusBody"><p class="muted">加载中…</p></div>
 </section>
+<h2 class="section-title">网易云</h2>
+<section class="card">
+<h2>登录状态</h2>
+<div id="neLoginBody"><p class="muted">加载中…</p></div>
+<div class="row" style="margin-top:12px;">
+<button id="neLogoutBtn" class="secondary">退出登录</button>
+</div>
+<p class="muted">登录请走接口：/netease/login/cellphone（手机号）或 /netease/login/qr/key → /login/qr/create → /login/qr/check（扫码）。</p>
+</section>
+<section class="card">
+<h2>搜索与取链测试</h2>
+<div class="row">
+<input type="text" id="neSearchInput" placeholder="输入歌名，例如：晴天">
+<button id="neSearchBtn">搜索</button>
+</div>
+<p class="error" id="neSearchErr"></p>
+<div id="neSearchResults" style="margin-top:12px;"></div>
+<div class="row" style="margin-top:12px;">
+<select id="neEndpointSel">
+<option value="url" selected>song/url（v2）</option>
+<option value="url/v1">song/url/v1</option>
+</select>
+<select id="neLevelSel">
+<option value="standard" selected>standard</option>
+<option value="higher">higher</option>
+<option value="exhigh">exhigh</option>
+<option value="lossless">lossless</option>
+<option value="hires">hires</option>
+</select>
+<button id="neGetUrlBtn">获取播放链接</button>
+<button id="neGetLyricBtn" class="secondary">获取歌词</button>
+</div>
+<p class="error" id="nePlayErr"></p>
+<div id="nePlayResult" style="margin-top:8px;"></div>
+<div id="neAudioWrap"></div>
+<div id="neLyricWrap"></div>
+</section>
+<section class="card">
+<h2>接口状态</h2>
+<div id="neStatusBody"><p class="muted">加载中…</p></div>
+</section>
 </div>
 </main>
 <script>
@@ -159,11 +207,15 @@ function $(id){ return document.getElementById(id); }
 function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
 function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
 function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+// Key 存储键名保持 migu_admin_key 不变（与旧 /miguadmin 一致），
+// 已记住 Key 的用户打开 /admin 不用重输；它是咪咕与网易云共用的 API_KEY。
 var apiKey = lsGet('migu_admin_key') || sessionStorage.getItem('migu_admin_key') || '';
 var selectedSong = null;
 var songs = [];
 var currentPacmToken = '';
 var pacmShown = false;
+var neSelectedSong = null;
+var neSongs = [];
 
 function esc(s){
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -302,7 +354,7 @@ async function loadStatus(){
     $('statusBody').innerHTML = '<p class="error">加载失败</p>';
   }
 }
-function loadAll(){ loadSession(); loadUser(); loadStatus(); }
+function loadAll(){ loadSession(); loadUser(); loadStatus(); loadNeLoginStatus(); loadNeStatus(); }
 async function doRefresh(){
   // 用 /user/info/phone 主动轮换 pacmtoken（返回新 token 并写回 KV），
   // 再刷新会话状态与用户信息；token 已死时换不到，会照实显示 session_dead。
@@ -516,6 +568,163 @@ function copyUrl(){
     document.body.removeChild(ta);
   }
 }
+// ---- 网易云 ----
+async function loadNeLoginStatus(){
+  try {
+    var j = await api('/netease/login/status');
+    var d = j.data || j;
+    var loggedIn = d.code === 200 && (d.account || d.profile);
+    var html = '';
+    if(loggedIn){
+      var acc = d.account || {};
+      var prof = d.profile || {};
+      html = '<div class="kv"><span>状态</span><span class="pill ok">已登录</span></div>'
+        + '<div class="kv"><span>用户 ID</span><span>' + esc(acc.id || prof.userId || '-') + '</span></div>'
+        + '<div class="kv"><span>昵称</span><span>' + esc(prof.nickname || acc.userName || '-') + '</span></div>';
+    } else {
+      html = '<div class="kv"><span>状态</span><span class="pill err">未登录</span></div>'
+        + '<p class="muted">未登录时搜索、取链、歌词仍可用；登录后可用会员相关接口。</p>';
+    }
+    $('neLoginBody').innerHTML = html;
+  } catch(e){
+    $('neLoginBody').innerHTML = '<p class="error">加载失败</p>';
+  }
+}
+async function doNeLogout(){
+  if(!confirm('确定退出网易云登录吗？')) return;
+  try {
+    var j = await api('/netease/logout');
+    alert(j && j.code === 200 ? '已退出登录' : '退出失败');
+  } catch(e){ alert('退出失败'); }
+  loadNeLoginStatus();
+}
+function neSongTitle(s){
+  var artists = (s.artists || s.ar || []).map(function(a){ return a.name || ''; }).filter(Boolean).join(' / ');
+  var album = (s.album && s.album.name) || (s.al && s.al.name) || '';
+  var ms = s.duration || s.dt || 0;
+  var sec = ms > 10000 ? Math.floor(ms / 1000) : ms;
+  var dur = sec ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '';
+  return [s.name || '', artists, album, dur].filter(Boolean).join(' - ');
+}
+function neSelectSong(i){
+  neSelectedSong = neSongs[i];
+  var nodes = $('neSearchResults').querySelectorAll('.song');
+  nodes.forEach(function(n, idx){ if(idx === i){ n.classList.add('sel'); } else { n.classList.remove('sel'); } });
+  $('nePlayResult').innerHTML = '';
+  $('neAudioWrap').innerHTML = '';
+  $('neLyricWrap').innerHTML = '';
+}
+async function doNeSearch(){
+  var text = $('neSearchInput').value.trim();
+  if(!text){ $('neSearchErr').textContent = '请输入歌名'; return; }
+  $('neSearchErr').textContent = '';
+  $('neSearchResults').innerHTML = '<p class="muted">搜索中…</p>';
+  try {
+    var j = await api('/netease/search?keywords=' + encodeURIComponent(text) + '&limit=10');
+    var items = (j.result && j.result.songs) || [];
+    neSongs = items;
+    if(!neSongs.length){
+      $('neSearchResults').innerHTML = '<p class="muted">没有找到相关歌曲</p>';
+      return;
+    }
+    var html = '';
+    neSongs.forEach(function(s, i){
+      html += '<div class="song" data-i="' + i + '">'
+        + '<div class="songTitle">' + esc(neSongTitle(s)) + '</div>'
+        + '<button class="playBtn" data-i="' + i + '">播放</button>'
+        + '</div>';
+    });
+    $('neSearchResults').innerHTML = html;
+    var nodes = $('neSearchResults').querySelectorAll('.song');
+    nodes.forEach(function(n){
+      n.addEventListener('click', function(){ neSelectSong(parseInt(n.getAttribute('data-i'), 10)); });
+    });
+    var playBtns = $('neSearchResults').querySelectorAll('.playBtn');
+    playBtns.forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        neSelectSong(parseInt(btn.getAttribute('data-i'), 10));
+        getNePlayUrl(true);
+      });
+    });
+    neSelectSong(0);
+  } catch(e){
+    $('neSearchResults').innerHTML = '<p class="error">搜索失败</p>';
+  }
+}
+async function getNePlayUrl(autoPlay){
+  if(!neSelectedSong){ $('nePlayErr').textContent = '请先搜索并选择一首歌'; return; }
+  var ep = $('neEndpointSel').value;
+  var level = $('neLevelSel').value;
+  var id = neSelectedSong.id;
+  var q = 'id=' + encodeURIComponent(id);
+  if(ep === 'url/v1'){ q += '&level=' + encodeURIComponent(level); }
+  $('nePlayErr').textContent = '';
+  $('nePlayResult').innerHTML = '<p class="muted">获取中…</p>';
+  $('neAudioWrap').innerHTML = '';
+  try {
+    var j = await api('/netease/song/' + ep + '?' + q);
+    var d = (j.data && j.data[0]) || null;
+    if(!d || !d.url){
+      $('nePlayResult').innerHTML = '<p class="error">没有拿到播放链接（code：' + esc(d && d.code !== undefined ? d.code : (j.code || '')) + '，该歌可能无版权或需会员）</p>';
+      return;
+    }
+    var br = d.br ? Math.round(d.br / 1000) + 'kbps' : '-';
+    $('nePlayResult').innerHTML = '<div class="kv"><span>接口</span><span>song/' + esc(ep) + (ep === 'url/v1' ? ' · ' + esc(level) : '') + '</span></div>'
+      + '<div class="kv"><span>码率</span><span>' + esc(br) + '</span></div>'
+      + '<div class="kv"><span>格式</span><span>' + esc(d.type || '-') + '</span></div>'
+      + '<div class="row" style="margin-top:8px;"><input type="text" id="nePlayUrlInput" readonly value="' + esc(d.url) + '"><button id="neCopyBtn" class="secondary">复制链接</button></div>';
+    $('neAudioWrap').innerHTML = '<audio controls preload="none" src="' + esc(d.url) + '"></audio>';
+    $('neCopyBtn').addEventListener('click', function(){
+      var v = $('nePlayUrlInput').value;
+      function done(ok){
+        $('neCopyBtn').textContent = ok ? '已复制' : '复制失败';
+        setTimeout(function(){ $('neCopyBtn').textContent = '复制链接'; }, 1500);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(v).then(function(){ done(true); }, function(){ done(false); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = v;
+        document.body.appendChild(ta);
+        ta.select();
+        try { done(document.execCommand('copy')); } catch(e){ done(false); }
+        document.body.removeChild(ta);
+      }
+    });
+    if(autoPlay){
+      var audio = $('neAudioWrap').querySelector('audio');
+      if(audio){ audio.play().catch(function(){}); }
+    }
+  } catch(e){
+    $('nePlayResult').innerHTML = '<p class="error">获取失败</p>';
+  }
+}
+async function getNeLyric(){
+  if(!neSelectedSong){ $('nePlayErr').textContent = '请先搜索并选择一首歌'; return; }
+  $('nePlayErr').textContent = '';
+  $('neLyricWrap').innerHTML = '<p class="muted">获取歌词中…</p>';
+  try {
+    var j = await api('/netease/lyric?id=' + encodeURIComponent(neSelectedSong.id));
+    var lyric = (j.lrc && j.lrc.lyric) || '';
+    if(!lyric){
+      $('neLyricWrap').innerHTML = '<p class="muted">暂无歌词</p>';
+      return;
+    }
+    $('neLyricWrap').innerHTML = '<div class="lyricBox">' + esc(lyric) + '</div>';
+  } catch(e){
+    $('neLyricWrap').innerHTML = '<p class="error">获取歌词失败</p>';
+  }
+}
+async function loadNeStatus(){
+  try {
+    var j = await api('/netease/status');
+    $('neStatusBody').innerHTML = '<div class="kv"><span>版本</span><span>' + esc(j.version || '-') + '</span></div>'
+      + '<div class="kv"><span>运行环境</span><span>' + esc(j.runtime || '-') + '</span></div>';
+  } catch(e){
+    $('neStatusBody').innerHTML = '<p class="error">加载失败</p>';
+  }
+}
 $('enterBtn').addEventListener('click', enterKey);
 $('keyInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ enterKey(); } });
 $('togglePacmBtn').addEventListener('click', togglePacm);
@@ -527,6 +736,11 @@ $('getUrlBtn').addEventListener('click', function(){ getPlayUrl(false); });
 $('refreshBtn').addEventListener('click', doRefresh);
 $('logoutBtn').addEventListener('click', doLogout);
 $('exitBtn').addEventListener('click', exitAdmin);
+$('neLogoutBtn').addEventListener('click', doNeLogout);
+$('neSearchBtn').addEventListener('click', doNeSearch);
+$('neSearchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doNeSearch(); } });
+$('neGetUrlBtn').addEventListener('click', function(){ getNePlayUrl(false); });
+$('neGetLyricBtn').addEventListener('click', getNeLyric);
 if(apiKey){
   api('/migu/passport/refresh').then(function(){ showDash(); loadAll(); }).catch(function(){ showGate(''); });
 } else {

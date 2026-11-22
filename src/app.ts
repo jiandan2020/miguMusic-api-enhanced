@@ -7,12 +7,14 @@ import { getEnv } from './utils/env';
 import { methodNotAllowed } from 'hono/method-not-allowed';
 import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
+import neteaseRoutes from './netease/router';
 import { adminPageHtml } from './adminPage';
 
 // 通过 import 引入 package.json，esbuild / tsup 在构建时会将 JSON 内联到产物中
 // 这样在 Node、Cloudflare Workers、Vercel Edge、Deno、EdgeOne 等所有 bundler 平台都能直接读取版本号
 // 需要 tsconfig 启用 "resolveJsonModule": true
 import pkg from '../package.json' with { type: "json" };
+import neteasePkg from '../netease/package.json' with { type: "json" };
 
 const CACHE_SECONDS = 300; // 5分钟缓存
 
@@ -118,17 +120,50 @@ app.get('/migu/status', c => {
     });
 });
 
+// 网易云健康检查（公开路径，见 src/middleware/auth.ts）
+app.get('/netease', c => {
+    return c.json({
+        message: 'Netease API Enhanced',
+        version: neteasePkg.version,
+    });
+});
+
+app.get('/netease/status', c => {
+    return c.json({
+        message: 'Netease API Enhanced',
+        version: neteasePkg.version,
+        runtime: getRuntimeKey(),
+    });
+});
+
+// 网易云版本号（公开路径）
+app.get('/netease/version', c => {
+    return c.json({
+        version: neteasePkg.version,
+    });
+});
+
 // 管理页面（单文件 HTML，见 src/adminPage.ts）：页面本身公开，
 // 里面的数据请求都要带 Key 校验后才能看到内容。
-app.get('/miguadmin', (c) => {
+// 统一入口 /admin；旧 /miguadmin 301 跳转到 /admin。
+app.get('/admin', (c) => {
     return c.html(adminPageHtml);
 });
-app.get('/miguadmin/', (c) => {
+app.get('/admin/', (c) => {
     return c.html(adminPageHtml);
+});
+app.get('/miguadmin', (c) => {
+    return c.redirect('/admin', 301);
+});
+app.get('/miguadmin/', (c) => {
+    return c.redirect('/admin', 301);
 });
 
 // API 路由
 app.route('/migu', apiRoutes);
+
+// 网易云路由（挂在 /netease 下，见 src/netease/router.ts）
+app.route('/netease', neteaseRoutes);
 
 // 404 处理
 app.notFound(c => {
