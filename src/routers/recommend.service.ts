@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { resolvePacmToken, noteRotatedPacmToken } from '../utils/pacmSession';
 import { getRecommendPlaylist } from '../modules/recommend_playlist';
 import { getSceneRecommend } from '../modules/recommend_song';
 import { getSimilarSongRecommend } from '../modules/recommend_similarSong';
@@ -33,21 +34,26 @@ export default function (app: Hono) {
     });
 
     app.get('/recommend/radio/all', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getRadioRecommendAll(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/recommend/listenFreely/tab', async (c) => {
-        const {data, newPacmToken} = await getListenFreelyTab(c.req.query('pacmtoken') ?? '');
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
+        const {data, newPacmToken} = await getListenFreelyTab(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/recommend/listenFreely', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getListenFreelySongs(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('modelId') ?? '701000'
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 }

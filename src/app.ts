@@ -89,6 +89,8 @@ app.use(
     memCache({
         max: 100,
         ttl: CACHE_SECONDS * 1000,
+        // 刷新接口每次都要实时执行，不走内存缓存
+        key: (c) => (c.req.path === '/migu/passport/refresh' ? null : (c.req.method === 'GET' ? c.req.url : null)),
     })
 );
 

@@ -34,6 +34,35 @@ USE_DATABASE=true
 
 ?> `AUTO_STORE_URL` / `USE_DATABASE` 需要设置 === `true` 才生效。
 
+## pacmtoken 会话保活（登录一次，服务端续期）
+
+登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
+以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量；
+接口返回里带了新的 pacmtoken 时自动写回；定时任务每 6 小时验一次，
+死了就用存着的 ST token 换一个新的。**不自动重新登录**：ST 也死了就
+停下，等手动重新登录一次。
+
+需要做的配置：
+
+1. **EdgeOne 控制台**：新建一个 KV 命名空间，绑定到这个边缘函数，
+   变量名填 `MIGU_KV`（KV 以裸全局标识符注入，不在环境变量里）。
+   没绑定的话，`/migu/passport/refresh` 会返回 `kv_unavailable`，
+   接口照常工作，只是每次都要自己传 `?pacmtoken=`。
+2. **GitHub 仓库 Secrets**：加 `MIGU_API_KEY`（就是 `API_KEY` 的值），
+   给 `.github/workflows/refresh-pacmtoken.yml` 定时任务调刷新接口用。
+3. **登录一次**：调 `/login/sim/send?phone=...` 再轮询
+   `/login/sim/query?sessionId=...&isNeedPacm=1`（或手机验证码登录），
+   成功后登录态自动写进 KV。注意登录时 `isNeedPacm` 要传 `1`，
+   否则只拿到 ST token、不存 pacmtoken。
+
+相关接口：
+
+| 接口 | 说明 |
+| ---- | ---- |
+| `GET /migu/passport/refresh` | 刷新一次会话：返回 `alive`（还活着）、`refreshed`（已用 ST 换新）、`no_session`（还没登录过）、`session_dead`（ST 也死了，需手动重新登录）、`kv_unavailable`（KV 未绑定）、`error`（网络问题）。需要 API_KEY 鉴权 |
+| `GET /migu/passport/checkToken` | 不传 `pacmtoken` 时验 KV 里存的会话 |
+| `GET /migu/passport/logout` | 退出登录；退出的是存量会话且咪咕确认成功时，清掉 KV 里的登录态 |
+
 ### CORS 配置规则
 
 - 有 `.env` 文件，并且设置 `ALLOWED_ORIGINS`为空：拒绝所有跨域请求

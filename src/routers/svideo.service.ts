@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { resolvePacmToken, noteRotatedPacmToken } from '../utils/pacmSession';
 import { getSVideoInfo } from '../modules/svideo_info';
 import { searchSVideo } from '../modules/svideo_search';
 import { getSVideoSearchSuggest } from '../modules/svideo_searchSuggest';
@@ -64,8 +65,9 @@ export default function (app: Hono) {
     });
 
     app.get('/svideo/recommend', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const { data, newPacmToken } = await getSVideoRecommend(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 }

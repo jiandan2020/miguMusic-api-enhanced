@@ -4,6 +4,7 @@ import { checkToken } from '../modules/passport_checkToken';
 import { loginSim } from '../modules/login_sim';
 import { loginPhone } from '../modules/login_phone';
 import { logout } from '../modules/passport_logout';
+import { saveSession, clearSession, resolvePacmToken, refreshPacmToken } from '../utils/pacmSession';
 
 export default function (app: Hono) {
     app.get('/passport/getPacmToken', async (c) => {
@@ -18,7 +19,8 @@ export default function (app: Hono) {
     });
 
     app.get('/passport/checkToken', async (c) => {
-        const token = c.req.query('pacmtoken') ?? '';
+        // 不传 pacmtoken 时验 KV 里存的会话
+        const { token } = await resolvePacmToken(c);
         const data = await checkToken(token);
         const code = data.code?.toString() || '';
         if(code !== '000000'){
@@ -27,9 +29,23 @@ export default function (app: Hono) {
         return c.json({ success: true, ...data });
     });
 
+    // 刷新 KV 里存的登录态：验活 → 死了就用 ST 换新的 → ST 也死了就报会话失效。
+    // 不自动重新登录；失败时只报状态。定时任务与手动触发都走这里。
+    app.get('/passport/refresh', async (c) => {
+        const result = await refreshPacmToken();
+        const ok = result.status === 'alive' || result.status === 'refreshed';
+        return c.json({ success: ok, ...result });
+    });
+
     app.get('/passport/logout', async (c) => {
-        const data = await logout(c.req.query('pacmtoken') ?? '');
-        return c.json({ success: true, ...data, pacmtoken: '' });
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
+        const data = await logout(pacmtoken);
+        // 退出的是存量会话、且咪咕确认退出成功时，才清掉 KV 里的登录态
+        let sessionCleared = false;
+        if (fromStore && data?.code?.toString() === '000000') {
+            sessionCleared = await clearSession();
+        }
+        return c.json({ success: true, ...data, pacmtoken: '', sessionCleared });
     });
 
     app.get('/login/sim/send', async(c) => {
@@ -74,7 +90,15 @@ export default function (app: Hono) {
             return c.json({ success: false, error: pacmtokenData.body.error });
         }
 
-        return c.json({ success: true, data: pacmtokenData, token: token });
+        // 登录成功，把登录态写进 KV：以后不用再传 pacmtoken，服务端自动续期
+        const sessionStored = await saveSession({
+            pacmtoken: pacmtokenData.pacmToken || '',
+            stToken: token,
+            loginMethod: 'sim',
+            updatedAt: new Date().toISOString(),
+        });
+
+        return c.json({ success: true, data: pacmtokenData, token: token, sessionStored });
     });
 
     app.get('/login/phone/msgCode', async(c) => {
@@ -118,6 +142,15 @@ export default function (app: Hono) {
             return c.json({ success: false, error: pacmtokenData.body.error });
         }
 
-        return c.json({ success: true, data: pacmtokenData, token: token });
+        // 登录成功，把登录态写进 KV：以后不用再传 pacmtoken，服务端自动续期
+        const sessionStored = await saveSession({
+            pacmtoken: pacmtokenData.pacmToken || '',
+            stToken: token,
+            loginMethod: 'phone',
+            phone,
+            updatedAt: new Date().toISOString(),
+        });
+
+        return c.json({ success: true, data: pacmtokenData, token: token, sessionStored });
     })
 }

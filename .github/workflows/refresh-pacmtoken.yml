@@ -1,0 +1,33 @@
+# 定时刷新 KV 里存的咪咕登录态（pacmtoken 保活）
+#
+# 每 6 小时调一次 /migu/passport/refresh：
+#   - token 还活着 → 只更新检查时间；
+#   - token 死了 → 用存着的 ST token 换一个新的；
+#   - ST 也死了 → 接口返回 session_dead，本任务失败，提醒手动重新登录一次。
+# 刷新路径里没有任何自动重新登录；失败时不重试、不发短信。
+#
+# 需要在仓库 Settings → Secrets and variables → Actions 里加：
+#   MIGU_API_KEY：EdgeOne 控制台里配的 API_KEY（调用接口用的鉴权密钥）
+name: 刷新 pacmtoken
+
+on:
+  schedule:
+    # 每 6 小时的第 17 分钟（UTC）
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 调用刷新接口
+        run: |
+          resp=$(curl -s -m 60 "https://migu.api.xzccs.top/migu/passport/refresh?key=${{ secrets.MIGU_API_KEY }}")
+          echo "$resp"
+          if echo "$resp" | grep -q '"status":"alive"\|"status":"refreshed"'; then
+            echo "pacmtoken 有效"
+          else
+            echo "pacmtoken 未处于有效状态（可能需要手动重新登录一次）"
+            exit 1
+          fi

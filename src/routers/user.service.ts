@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { resolvePacmToken, noteRotatedPacmToken } from '../utils/pacmSession';
 import { getUserBadge } from '../modules/user_badge';
 import { queryUserInfo } from '../modules/user_queryInfo';
 import { getUserHomePage } from '../modules/user_homePage';
@@ -41,146 +42,174 @@ import { deleteEpicComment } from "../modules/comment_epic_del";
 
 export default function (app: Hono) {
     app.get('/user/badge', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getUserBadge(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/info', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await queryUserInfo(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/info/phone', async (c) => {
-        const {data, newPacmToken} = await getUserPhoneInfo(c.req.query('pacmtoken') ?? '');
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
+        const {data, newPacmToken} = await getUserPhoneInfo(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/homePage', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getUserHomePage(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/recommend/today', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getTodayRecommend(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/myList', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const page = Number(c.req.query('page') ?? 1);
         const size = Number(c.req.query('size') ?? 20);
         const queryType = Number(c.req.query('queryType') ?? 0);
         const {data, newPacmToken} = await getUserMyList(pacmtoken, queryType, page, size);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken:newPacmToken });
     });
 
     app.get('/user/collect/list', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const page = Number(c.req.query('page') ?? 1);
         const size = Number(c.req.query('size') ?? 20);
         const {data, newPacmToken} = await getUserCollectList(pacmtoken, page, size);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/collect/add', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await addUserCollect(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('type') ?? '',
             c.req.query('contentId') ?? '',
             c.req.query('title') ?? '',
             c.req.query('userId') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/collect/remove', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await removeUserCollect(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('type') ?? '',
             c.req.query('contentId') ?? '',
             c.req.query('userId') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/like/list', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getUserLikeList(
             c.req.query('playlistId') ?? '',
             Number(c.req.query('page') ?? 1),
             Number(c.req.query('size') ?? 20),
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('userId') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
     
     app.get('/user/like/add', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const contentIds = c.req.query('contentIds') ?? '';
         const {data, newPacmToken} = await likeSong(pacmtoken, contentIds);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/like/remove', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const contentId = c.req.query('contentId') ?? '';
         const {data, newPacmToken} = await dislikeSong(pacmtoken, contentId);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
     
     app.get('/user/myList/add', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await addUserMyList(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('title') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/myList/remove', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await removeUserMyList(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('playlistId') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
     
     app.get('/user/myList/edit', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await editUserMyList(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('title') ?? '',
             c.req.query('playlistId') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
     
     app.get('/user/myList/song/add', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await addSongToMyList(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('playlistId') ?? '',
             c.req.query('contentIds') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/myList/song/remove', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await removeSongFromMyList(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('playlistId') ?? '',
             c.req.query('contentId') ?? '',
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/follow/isFollow', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await isFollowAuthor(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('authorIdss') ?? '',
             c.req.query('authorType') ?? 'singer'
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
@@ -233,132 +262,160 @@ export default function (app: Hono) {
     });
 
     app.get('/user/follow/add', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const singerId = c.req.query('singerId') ?? '';
         const {data, newPacmToken} = await addFollower(pacmtoken, singerId);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/follow/remove', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const singerId = c.req.query('singerId') ?? '';
         const {data, newPacmToken} = await removeFollower(pacmtoken, singerId);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/audioBook', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getUserAudioBook(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             Number(c.req.query('recentListenNum') ?? 10),
             Number(c.req.query('recommendNum') ?? 5)
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/listenRank', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const type = c.req.query('type') ?? 'week';
         const {data, newPacmToken} = await getListenRank(pacmtoken, type);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/cloud/url', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getCloudUrl(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('contentId') || '',
             c.req.query('toneFlag') || 'PQ',
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/cloud/dl', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getCloudDLUrl(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('contentId') ?? '',
             c.req.query('toneFlag') ?? 'PQ'
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/emoji/num', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getEmojiNum(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('contentIds') ?? ''
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/emoji/action', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await emojiAction(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('contentId') ?? '',
             c.req.query('emojiId') ?? '',
             c.req.query('action') ?? 'add'
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/heartthrob', async (c) => {
-        const pacmtoken = c.req.query('pacmtoken') ?? '';
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const songId = c.req.query('songId') ?? '';
         const {data, newPacmToken} = await getUserHeartthrob(pacmtoken, songId);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/message/notice', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getNoticeMsg(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             Number(c.req.query('page') ?? '1'),
             Number(c.req.query('size') ?? '10')
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/message/thumbs', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getThumbsMsg(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             Number(c.req.query('page') ?? '1'),
             Number(c.req.query('size') ?? '10')
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/message/interaction', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await getInteractionMsg(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('type') ?? '',
             Number(c.req.query('page') ?? '1'),
             Number(c.req.query('size') ?? '10')
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/comment/delete', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await deleteComment(
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
             c.req.query('commentId') ?? '',
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/comment/epic/add', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await addEpicComment(
             c.req.query('commentId') ?? '',
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/comment/epic/delete', async (c) => {
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
         const {data, newPacmToken} = await deleteEpicComment(
             c.req.query('commentId') ?? '',
-            c.req.query('pacmtoken') ?? '',
+            pacmtoken,
         );
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 
     app.get('/user/ordered', async (c) => {
-        const {data, newPacmToken} = await getUserOrdered(c.req.query('pacmtoken') ?? '');
+        const { token: pacmtoken, fromStore } = await resolvePacmToken(c);
+        const {data, newPacmToken} = await getUserOrdered(pacmtoken);
+        await noteRotatedPacmToken(fromStore, newPacmToken);
         return c.json({ success: true, ...data, pacmtoken: newPacmToken });
     });
 }

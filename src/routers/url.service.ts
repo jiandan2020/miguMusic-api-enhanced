@@ -6,6 +6,7 @@ import { getDLUrlV1 } from '../modules/url_dl_v1';
 
 import { saveUrlToDB, getUrlFromDB } from '../middleware/urlSaver';
 import { getEnv } from '../utils/env';
+import { resolvePacmToken } from '../utils/pacmSession';
 
 
 export default function (app: Hono) {
@@ -31,7 +32,7 @@ export default function (app: Hono) {
         const contentId = c.req.query('contentId') || '';
         const copyrightId = c.req.query('copyrightId') || '';
         const toneFlag = c.req.query('toneFlag') || 'PQ';
-        const pacmtoken = c.req.query('pacmtoken') || '';
+        const { token: pacmtoken } = await resolvePacmToken(c);
         const data = await getUrlV2(contentId, copyrightId, toneFlag, pacmtoken);
         if(c.req.query('302') !== undefined)
             return c.redirect(data?.data?.url || '', 302);
