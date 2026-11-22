@@ -71,12 +71,15 @@ table.params th { background: var(--color-surface-variant); white-space: nowrap;
 table.params td code { font-family: var(--font-mono); font-size: 12px; }
 pre { background: #0f172a; color: #e2e8f0; border-radius: var(--radius-md); padding: 12px; overflow: auto; font-size: 12px; line-height: 1.6; margin: 8px 0 0; }
 pre code { font-family: var(--font-mono); }
+.menu-toggle { display: none; }
 .filter { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; margin-bottom: 8px; outline: none; }
 .filter:focus { border-color: var(--color-primary); }
 .note { background: var(--color-primary-container); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; line-height: 1.7; color: var(--color-primary-text); }
 @media (max-width: 900px) {
   .layout { flex-direction: column; }
-  .sidebar { position: static; width: auto; max-height: none; }
+  .menu-toggle { display: block; position: sticky; top: 0; z-index: 10; width: 100%; text-align: left; padding: 12px 14px; font-size: 15px; font-weight: 600; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; box-shadow: var(--shadow-sm); }
+  .sidebar { display: none; position: static; width: auto; max-height: none; margin-top: 8px; }
+  .sidebar.open { display: block; }
 }
 </style>
 </head>
@@ -86,6 +89,7 @@ pre code { font-family: var(--font-mono); }
 <h1>音乐 API 接口文档</h1>
 <p class="intro">咪咕音乐 + 网易云音乐，二合一接口。全部接口均为 GET。示例里的域名统一用占位符，请换成你自己的部署域名。</p>
 </div>
+<button id="menuToggle" class="menu-toggle" type="button">☰ 目录</button>
 <div class="layout">
 <nav class="sidebar">
 <input id="filterInput" class="filter" placeholder="按接口名过滤，例如 搜索">
@@ -1058,17 +1062,32 @@ pre code { font-family: var(--font-mono); }
 </div>
 <script>
 (function(){
+  var toggle = document.getElementById('menuToggle');
+  var sidebar = document.querySelector('.sidebar');
+  if(toggle && sidebar){
+    toggle.addEventListener('click', function(){
+      var open = sidebar.classList.toggle('open');
+      toggle.textContent = open ? '✕ 收起目录' : '☰ 目录';
+    });
+    sidebar.addEventListener('click', function(e){
+      var a = e.target.closest ? e.target.closest('a') : null;
+      if(a){
+        sidebar.classList.remove('open');
+        toggle.textContent = '☰ 目录';
+      }
+    });
+  }
   var input = document.getElementById('filterInput');
   if(!input) return;
   input.addEventListener('input', function(){
     var q = input.value.trim().toLowerCase();
     var cards = document.querySelectorAll('.ep');
-    for(var i = 0; i &lt; cards.length; i++){
+    for(var i = 0; i < cards.length; i++){
       var text = (cards[i].getAttribute('data-search') || '').toLowerCase();
       cards[i].style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
     }
     var links = document.querySelectorAll('.sidebar a');
-    for(var j = 0; j &lt; links.length; j++){
+    for(var j = 0; j < links.length; j++){
       var lt = ((links[j].getAttribute('data-search') || '') + ' ' + links[j].textContent).toLowerCase();
       links[j].style.display = (!q || lt.indexOf(q) !== -1) ? '' : 'none';
     }
