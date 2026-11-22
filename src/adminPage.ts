@@ -222,6 +222,7 @@ var songs = [];
 var currentPacmToken = '';
 var pacmShown = false;
 var neSelectedSong = null;
+var neSelectedIdx = -1;
 var neSongs = [];
 
 function esc(s){
@@ -726,6 +727,7 @@ function neSongTitle(s){
 }
 function neSelectSong(i){
   neSelectedSong = neSongs[i];
+  neSelectedIdx = i;
   var nodes = $('neSearchResults').querySelectorAll('.song');
   nodes.forEach(function(n, idx){ if(idx === i){ n.classList.add('sel'); } else { n.classList.remove('sel'); } });
   $('nePlayResult').innerHTML = '';
@@ -780,8 +782,15 @@ async function doNeSearch(){
 async function getNePlayUrl(autoPlay){
   if(!neSelectedSong){ $('nePlayErr').textContent = '请先搜索并选择一首歌'; return; }
   var ep = $('neEndpointSel').value;
-  // 音质取选中那首歌自己那行的下拉框（与咪咕每首歌自带音质下拉框同款排布）
-  var row = $('neSearchResults') && $('neSearchResults').querySelector('.song.sel .neLevelSel');
+  // 音质取选中那首歌自己那行的下拉框（与咪咕每首歌自带音质下拉框同款排布）；
+  // 按下标找，找不到时再按 .sel 行找，最后回退 standard，避免读不到就全走 128k。
+  var row = null;
+  if(neSelectedIdx >= 0){
+    row = $('neSearchResults') && $('neSearchResults').querySelector('.song[data-i="' + neSelectedIdx + '"] .neLevelSel');
+  }
+  if(!row){
+    row = $('neSearchResults') && $('neSearchResults').querySelector('.song.sel .neLevelSel');
+  }
   var level = (row && row.value) || 'standard';
   var id = neSelectedSong.id;
   var q = 'id=' + encodeURIComponent(id) + '&level=' + encodeURIComponent(level);

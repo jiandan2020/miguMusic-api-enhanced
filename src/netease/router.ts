@@ -195,7 +195,9 @@ for (const { route, module: moduleFn } of neteaseRoutes) {
               ...(moduleResponse.body as any),
               session: {
                 updatedAt: await getUserCookieUpdatedAt(),
-                token: getMusicUToken(),
+                // 先确保存量 cookie 已从 KV 读进内存，再取 MUSIC_U，
+                // 否则 isolate 内存还是空串时 token 会显示成 -。
+                token: (await getUserCookie(), getMusicUToken()),
               },
             }
           : moduleResponse.body,

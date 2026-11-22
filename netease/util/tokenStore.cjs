@@ -105,7 +105,10 @@ async function setDeviceId(id) {
 // 登录成功（扫码/手机号/刷新）时由路由存入；请求没带 cookie 时由路由
 // 取出来注入。KV 未绑定时只用内存，isolate 切换后失效，需重新登录。
 async function getUserCookie() {
-  if (userCookieMem !== null) return userCookieMem
+  // 内存里是空串时也要重读 KV：isolate 可能在会话存进 KV 之前就把空串
+  // 缓存住了，之后再也不读 KV，就会一直显示匿名账号（管理页曾因此
+  // 显示 18161818749，而 curl 测到的却是真实账号）。
+  if (userCookieMem !== null && userCookieMem !== '') return userCookieMem
   const stored = await kvGet(KEY_USER_COOKIE)
   userCookieMem = stored || ''
   return userCookieMem
