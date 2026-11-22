@@ -9,6 +9,7 @@ import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
 import neteaseRoutes from './netease/router';
 import { adminPageHtml } from './adminPage';
+import { docPageHtml } from './docPage';
 import { isKvAvailable as isMiguKvAvailable } from './utils/pacmSession';
 
 // 通过 import 引入 package.json，esbuild / tsup 在构建时会将 JSON 内联到产物中
@@ -75,6 +76,18 @@ app.use(
         })
     })
 )
+
+/**
+ * API 文档页 /doc（单文件 HTML，见 src/docPage.ts）：公开路径，不鉴权。
+ * 必须注册在鉴权中间件（apiAuth）挂载之前——Hono 按注册顺序匹配，
+ * 先注册的路由处理器直接返回响应，不会走到后注册的 apiAuth。
+ */
+app.get('/doc', (c) => {
+    return c.html(docPageHtml);
+});
+app.get('/doc/', (c) => {
+    return c.html(docPageHtml);
+});
 
 /**
  * API 鉴权中间件

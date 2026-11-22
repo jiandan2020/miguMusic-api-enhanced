@@ -105,10 +105,10 @@ async function setDeviceId(id) {
 // 登录成功（扫码/手机号/刷新）时由路由存入；请求没带 cookie 时由路由
 // 取出来注入。KV 未绑定时只用内存，isolate 切换后失效，需重新登录。
 async function getUserCookie() {
-  // 内存里是空串时也要重读 KV：isolate 可能在会话存进 KV 之前就把空串
-  // 缓存住了，之后再也不读 KV，就会一直显示匿名账号（管理页曾因此
-  // 显示 18161818749，而 curl 测到的却是真实账号）。
-  if (userCookieMem !== null && userCookieMem !== '') return userCookieMem
+  // 用户会话每次都直接读 KV（不走内存缓存）：内存里的 cookie 可能已过期，
+  // 但 isolate 还攥着它不放，导致管理页一直显示匿名、取链全被网易限到
+  // 128k，而 curl（打到另一台节点）却能看到真实账号。KV 是唯一的
+  // 事实来源，读一次的代价远小于会话取不到的代价。
   const stored = await kvGet(KEY_USER_COOKIE)
   userCookieMem = stored || ''
   return userCookieMem
