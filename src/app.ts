@@ -79,8 +79,8 @@ app.use(
 
 /**
  * API 文档页 /doc（单文件 HTML，见 src/docPage.ts）：公开路径，不鉴权。
- * 必须注册在鉴权中间件（apiAuth）挂载之前——Hono 按注册顺序匹配，
- * 先注册的路由处理器直接返回响应，不会走到后注册的 apiAuth。
+ * 公开靠 src/middleware/auth.ts 里的 PUBLIC_PATHS（已含 /doc 与 /doc/），
+ * 不是靠注册顺序——app.use('*', apiAuth) 会对所有路径先跑一遍。
  */
 app.get('/doc', (c) => {
     return c.html(docPageHtml);

@@ -15,7 +15,7 @@ import type { Context, Next } from 'hono';
  * 环境变量用 getEnv() 读（见 src/utils/env.ts）：hono/adapter 的 env()
  * 只在 Cloudflare Workers（workerd）下返回绑定，在 EdgeOne 上直接返回 {}。
  */
-const PUBLIC_PATHS = new Set(['/migu', '/migu/status', '/migu/version', '/miguadmin', '/miguadmin/', '/netease', '/netease/status', '/netease/version', '/admin', '/admin/']);
+const PUBLIC_PATHS = new Set(['/migu', '/migu/status', '/migu/version', '/miguadmin', '/miguadmin/', '/netease', '/netease/status', '/netease/version', '/admin', '/admin/', '/doc', '/doc/']);
 
 function getApiKey(c: Context): string {
     return getEnv<{ API_KEY: string }>(c).API_KEY || '';
