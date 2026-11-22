@@ -13,6 +13,7 @@ const KEY_ANON_TOKEN = 'netease_anon_token'
 const KEY_XEAPI_PUBLIC_KEY = 'netease_xeapi_public_key'
 const KEY_DEVICE_ID = 'netease_device_id'
 const KEY_USER_COOKIE = 'netease_user_cookie'
+const KEY_USER_COOKIE_UPDATED_AT = 'netease_user_cookie_updated_at'
 
 function getKvBinding() {
   const kv = globalThis[KV_BINDING_NAME]
@@ -32,6 +33,7 @@ let xeapiPublicKeyMem = null // object | null
 let deviceIdMem = null // string | null
 let cnIpMem = null // string | null
 let userCookieMem = null // string | null（null = 未加载过；用户登录会话，只存 name=value 对）
+let userCookieUpdatedAtMem = null // string | null（null = 未加载过；会话上次写入时间，ISO 字符串）
 
 async function kvGet(key) {
   const kv = getKvBinding()
@@ -111,7 +113,23 @@ async function getUserCookie() {
 async function setUserCookie(cookie) {
   userCookieMem = cookie || ''
   await kvPut(KEY_USER_COOKIE, userCookieMem)
+  // 顺手记一次写入时间（另存一个 KV 键，不动原 cookie 的格式，老会话不受影响）；
+  // 清掉会话（传空串）时也记时间，方便管理页区分“刚退出”与“从未登录”。
+  userCookieUpdatedAtMem = new Date().toISOString()
+  await kvPut(KEY_USER_COOKIE_UPDATED_AT, userCookieUpdatedAtMem)
   return userCookieMem
+}
+async function getUserCookieUpdatedAt() {
+  if (userCookieUpdatedAtMem !== null) return userCookieUpdatedAtMem
+  const stored = await kvGet(KEY_USER_COOKIE_UPDATED_AT)
+  userCookieUpdatedAtMem = stored || ''
+  return userCookieUpdatedAtMem
+}
+// 从存着的 cookie 字符串里取出 MUSIC_U 的值（管理页脱敏展示用）
+function getMusicUToken() {
+  const cookie = userCookieMem || ''
+  const m = cookie.match(/(?:^|;\s*)MUSIC_U=([^;]*)/)
+  return m ? m[1] : ''
 }
 
 function getCnIp() {
@@ -155,6 +173,8 @@ module.exports = {
   setDeviceId,
   getUserCookie,
   setUserCookie,
+  getUserCookieUpdatedAt,
+  getMusicUToken,
   getCnIp,
   setCnIp,
   ensureIdentity,

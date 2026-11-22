@@ -163,6 +163,14 @@ audio { width: 100%; margin-top: 10px; }
 <section class="card">
 <h2>登录状态</h2>
 <div id="neLoginBody"><p class="muted">加载中…</p></div>
+<div style="margin-top:12px;">
+<div class="muted" style="margin-bottom:4px;">登录 token（MUSIC_U）</div>
+<div id="neTokenVal" style="word-break:break-all; font-size:13px; background:var(--color-surface-variant); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:8px 10px;">-</div>
+<div class="row" style="margin-top:8px;">
+<button id="toggleNeTokenBtn" class="secondary">显示完整 token</button>
+<button id="copyNeTokenBtn" class="secondary">复制</button>
+</div>
+</div>
 <div class="row" style="margin-top:12px;">
 <button id="neRefreshBtn">立即刷新</button>
 <button id="neLogoutBtn" class="secondary">退出登录</button>
@@ -186,13 +194,6 @@ audio { width: 100%; margin-top: 10px; }
 <select id="neEndpointSel">
 <option value="url" selected>song/url（v2）</option>
 <option value="url/v1">song/url/v1</option>
-</select>
-<select id="neLevelSel">
-<option value="standard" selected>standard</option>
-<option value="higher">higher</option>
-<option value="exhigh">exhigh</option>
-<option value="lossless">lossless</option>
-<option value="hires">hires</option>
 </select>
 <button id="neGetUrlBtn">获取播放链接</button>
 <button id="neGetLyricBtn" class="secondary">获取歌词</button>
@@ -587,14 +588,54 @@ async function loadNeLoginStatus(){
       var prof = d.profile || {};
       html = '<div class="kv"><span>状态</span><span class="pill ok">已登录</span></div>'
         + '<div class="kv"><span>用户 ID</span><span>' + esc(acc.id || prof.userId || '-') + '</span></div>'
-        + '<div class="kv"><span>昵称</span><span>' + esc(prof.nickname || acc.userName || '-') + '</span></div>';
+        + '<div class="kv"><span>昵称</span><span>' + esc(prof.nickname || acc.userName || '-') + '</span></div>'
+        + '<div class="kv"><span>会话更新时间</span><span>' + esc(fmtTime((j.session && j.session.updatedAt) || '')) + '</span></div>';
     } else {
       html = '<div class="kv"><span>状态</span><span class="pill err">未登录</span></div>'
         + '<p class="muted">未登录时搜索、取链、歌词仍可用；登录后可用会员相关接口。</p>';
     }
     $('neLoginBody').innerHTML = html;
+    currentNeToken = (j.session && j.session.token) || '';
+    neTokenShown = false;
+    renderNeToken();
   } catch(e){
     $('neLoginBody').innerHTML = '<p class="error">加载失败</p>';
+    currentNeToken = '';
+    renderNeToken();
+  }
+}
+var currentNeToken = '';
+var neTokenShown = false;
+function renderNeToken(){
+  var el = $('neTokenVal');
+  if(!el) return;
+  if(!currentNeToken){ el.textContent = '-'; return; }
+  if(neTokenShown){ el.textContent = currentNeToken; return; }
+  el.textContent = currentNeToken.length > 20
+    ? currentNeToken.slice(0, 12) + '…' + currentNeToken.slice(-8)
+    : currentNeToken;
+}
+function toggleNeToken(){
+  neTokenShown = !neTokenShown;
+  renderNeToken();
+  $('toggleNeTokenBtn').textContent = neTokenShown ? '隐藏完整 token' : '显示完整 token';
+}
+function copyNeToken(){
+  var v = currentNeToken;
+  function done(ok){
+    $('copyNeTokenBtn').textContent = ok ? '已复制' : '复制失败';
+    setTimeout(function(){ $('copyNeTokenBtn').textContent = '复制'; }, 1500);
+  }
+  if(!v){ done(false); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).then(function(){ done(true); }, function(){ done(false); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = v;
+    document.body.appendChild(ta);
+    ta.select();
+    try { done(document.execCommand('copy')); } catch(e){ done(false); }
+    document.body.removeChild(ta);
   }
 }
 function vipLabel(t){
@@ -708,6 +749,13 @@ async function doNeSearch(){
     neSongs.forEach(function(s, i){
       html += '<div class="song" data-i="' + i + '">'
         + '<div class="songTitle">' + esc(neSongTitle(s)) + '</div>'
+        + '<select class="neLevelSel" data-i="' + i + '">'
+        + '<option value="standard" selected>standard</option>'
+        + '<option value="higher">higher</option>'
+        + '<option value="exhigh">exhigh</option>'
+        + '<option value="lossless">lossless</option>'
+        + '<option value="hires">hires</option>'
+        + '</select>'
         + '<button class="playBtn" data-i="' + i + '">播放</button>'
         + '</div>';
     });
@@ -732,7 +780,9 @@ async function doNeSearch(){
 async function getNePlayUrl(autoPlay){
   if(!neSelectedSong){ $('nePlayErr').textContent = '请先搜索并选择一首歌'; return; }
   var ep = $('neEndpointSel').value;
-  var level = $('neLevelSel').value;
+  // 音质取选中那首歌自己那行的下拉框（与咪咕每首歌自带音质下拉框同款排布）
+  var row = $('neSearchResults') && $('neSearchResults').querySelector('.song.sel .neLevelSel');
+  var level = (row && row.value) || 'standard';
   var id = neSelectedSong.id;
   var q = 'id=' + encodeURIComponent(id) + '&level=' + encodeURIComponent(level);
   $('nePlayErr').textContent = '';
@@ -816,6 +866,8 @@ $('logoutBtn').addEventListener('click', doLogout);
 $('exitBtn').addEventListener('click', exitAdmin);
 $('neLogoutBtn').addEventListener('click', doNeLogout);
 $('neRefreshBtn').addEventListener('click', doNeRefresh);
+$('toggleNeTokenBtn').addEventListener('click', toggleNeToken);
+$('copyNeTokenBtn').addEventListener('click', copyNeToken);
 $('neSearchBtn').addEventListener('click', doNeSearch);
 $('neSearchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doNeSearch(); } });
 $('neGetUrlBtn').addEventListener('click', function(){ getNePlayUrl(false); });

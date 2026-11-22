@@ -13,7 +13,7 @@ import createRequest from '../../netease/util/request.cjs'
 // @ts-ignore — 同上
 import { cookieToJson, hasCookie } from '../../netease/util/index.cjs'
 // @ts-ignore — 同上
-import { ensureIdentity, getCnIp, getUserCookie, setUserCookie } from '../../netease/util/tokenStore.cjs'
+import { ensureIdentity, getCnIp, getUserCookie, setUserCookie, getUserCookieUpdatedAt, getMusicUToken } from '../../netease/util/tokenStore.cjs'
 import { ensureConfig } from './configRefresh'
 import { neteaseRoutes } from './routes'
 
@@ -190,7 +190,15 @@ for (const { route, module: moduleFn } of neteaseRoutes) {
         )
       }
       const res = c.json(
-        moduleResponse.body,
+        route === '/login/status'
+          ? {
+              ...(moduleResponse.body as any),
+              session: {
+                updatedAt: await getUserCookieUpdatedAt(),
+                token: getMusicUToken(),
+              },
+            }
+          : moduleResponse.body,
         moduleResponse.status as any,
       )
       if (!query.noCookie) {
