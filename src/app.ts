@@ -128,11 +128,20 @@ app.get('/netease', c => {
     });
 });
 
+// 网易云 KV 是否已绑定：与 netease/util/tokenStore.cjs 的 getKvBinding()
+// 同逻辑（读裸全局 NETEASE_KV 并确认有 get/put）；这里不直接 import 那个
+// .cjs 模块，因为从 app.ts 引入会触发 TS7016（缺声明文件）。
+function isNeteaseKvBound(): boolean {
+    const kv = (globalThis as Record<string, unknown>)['NETEASE_KV'] as { get?: unknown; put?: unknown } | undefined;
+    return !!kv && typeof kv.get === 'function' && typeof kv.put === 'function';
+}
+
 app.get('/netease/status', c => {
     return c.json({
         message: 'Netease API Enhanced',
         version: neteasePkg.version,
         runtime: getRuntimeKey(),
+        kvBound: isNeteaseKvBound(),
     });
 });
 

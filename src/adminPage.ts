@@ -169,6 +169,10 @@ audio { width: 100%; margin-top: 10px; }
 <p class="muted">登录请走接口：/netease/login/cellphone（手机号）或 /netease/login/qr/key → /login/qr/create → /login/qr/check（扫码）。</p>
 </section>
 <section class="card">
+<h2>会员信息</h2>
+<div id="neMemberBody"><p class="muted">加载中…</p></div>
+</section>
+<section class="card">
 <h2>搜索与取链测试</h2>
 <div class="row">
 <input type="text" id="neSearchInput" placeholder="输入歌名，例如：晴天">
@@ -354,7 +358,7 @@ async function loadStatus(){
     $('statusBody').innerHTML = '<p class="error">加载失败</p>';
   }
 }
-function loadAll(){ loadSession(); loadUser(); loadStatus(); loadNeLoginStatus(); loadNeStatus(); }
+function loadAll(){ loadSession(); loadUser(); loadStatus(); loadNeLoginStatus(); loadNeMember(); loadNeStatus(); }
 async function doRefresh(){
   // 用 /user/info/phone 主动轮换 pacmtoken（返回新 token 并写回 KV），
   // 再刷新会话状态与用户信息；token 已死时换不到，会照实显示 session_dead。
@@ -590,6 +594,44 @@ async function loadNeLoginStatus(){
     $('neLoginBody').innerHTML = '<p class="error">加载失败</p>';
   }
 }
+function vipLabel(t){
+  if(t === 11) return '黑胶 VIP';
+  if(t === 10) return '音乐包';
+  if(t === 0) return '无会员';
+  return t == null ? '-' : 'VIP(' + t + ')';
+}
+async function loadNeMember(){
+  try {
+    var st = await api('/netease/login/status');
+    var sd = st.data || st;
+    if(!(sd.code === 200 && (sd.account || sd.profile))){
+      $('neMemberBody').innerHTML = '<p class="muted">未登录</p>';
+      return;
+    }
+    var uid = (sd.account && sd.account.id) || (sd.profile && sd.profile.userId) || '';
+    var det = await api('/netease/user/detail?uid=' + encodeURIComponent(uid));
+    var prof = det.profile || {};
+    var vip = vipLabel(prof.vipType);
+    var html = '<div class="kv"><span>会员</span><span>' + esc(vip) + '</span></div>';
+    try {
+      var lv = await api('/netease/user/level');
+      var d = lv.data || {};
+      if(typeof d.level === 'number'){
+        var pct = Math.round((d.progress || 0) * 100);
+        html += '<div class="kv"><span>等级</span><span>Lv.' + d.level + '（' + pct + '%）</span></div>'
+          + '<div style="height:8px;border-radius:999px;background:var(--surface-variant,#f1f5f9);overflow:hidden;margin-top:6px;">'
+          + '<div style="height:100%;width:' + pct + '%;background:var(--primary,#6366f1);"></div></div>';
+      } else {
+        html += '<div class="kv"><span>等级</span><span>-</span></div>';
+      }
+    } catch(e2){
+      html += '<div class="kv"><span>等级</span><span>-</span></div>';
+    }
+    $('neMemberBody').innerHTML = html;
+  } catch(e){
+    $('neMemberBody').innerHTML = '<p class="error">加载失败</p>';
+  }
+}
 async function doNeLogout(){
   if(!confirm('确定退出网易云登录吗？')) return;
   try {
@@ -597,6 +639,7 @@ async function doNeLogout(){
     alert(j && j.code === 200 ? '已退出登录' : '退出失败');
   } catch(e){ alert('退出失败'); }
   loadNeLoginStatus();
+  loadNeMember();
 }
 function neSongTitle(s){
   var artists = (s.artists || s.ar || []).map(function(a){ return a.name || ''; }).filter(Boolean).join(' / ');
@@ -719,8 +762,10 @@ async function getNeLyric(){
 async function loadNeStatus(){
   try {
     var j = await api('/netease/status');
+    var kv = j.kvBound === true ? '<span class="pill ok">已绑定</span>' : (j.kvBound === false ? '<span class="pill err">未绑定</span>' : '-');
     $('neStatusBody').innerHTML = '<div class="kv"><span>版本</span><span>' + esc(j.version || '-') + '</span></div>'
-      + '<div class="kv"><span>运行环境</span><span>' + esc(j.runtime || '-') + '</span></div>';
+      + '<div class="kv"><span>运行环境</span><span>' + esc(j.runtime || '-') + '</span></div>'
+      + '<div class="kv"><span>KV（NETEASE_KV）</span><span>' + kv + '</span></div>';
   } catch(e){
     $('neStatusBody').innerHTML = '<p class="error">加载失败</p>';
   }
