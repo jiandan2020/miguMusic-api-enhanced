@@ -49,8 +49,11 @@ body { margin: 0; font-family: var(--font-sans); background: var(--color-backgro
 .sidebar { position: sticky; top: 16px; width: 260px; flex: none; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 16px; max-height: calc(100vh - 32px); overflow: auto; box-shadow: var(--shadow-sm); }
 .sidebar h3 { margin: 14px 0 6px; font-size: 14px; }
 .sidebar h3:first-child { margin-top: 0; }
-.sidebar a { display: block; padding: 5px 8px; border-radius: 8px; color: var(--color-text-secondary); text-decoration: none; font-size: 13px; font-family: var(--font-mono); word-break: break-all; }
+.sidebar h4 { margin: 10px 8px 2px; font-size: 12px; color: var(--color-text-muted); font-weight: 600; }
+.sidebar a { display: block; padding: 5px 8px; border-radius: 8px; color: var(--color-text); text-decoration: none; }
 .sidebar a:hover { background: var(--color-surface-variant); color: var(--color-text); }
+.sidebar a .t { display: block; font-size: 13px; line-height: 1.4; }
+.sidebar a .p { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--color-text-muted); word-break: break-all; line-height: 1.4; }
 .content { flex: 1; min-width: 0; }
 .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .card h3 { margin: 0 0 8px; font-size: 17px; }
@@ -85,54 +88,66 @@ pre code { font-family: var(--font-mono); }
 </div>
 <div class="layout">
 <nav class="sidebar">
-<input id="filterInput" class="filter" placeholder="按接口名过滤，例如 search">
+<input id="filterInput" class="filter" placeholder="按接口名过滤，例如 搜索">
 <h3>说明</h3>
-<a href="#auth" data-search="auth 鉴权 说明">鉴权说明</a>
+<a href="#auth" data-search="auth 鉴权 说明"><span class="t">鉴权说明</span></a>
 <h3>咪咕</h3>
-<a href="#mg-search" data-search="migu search 搜索">/migu/search</a>
-<a href="#mg-search-hot" data-search="migu search hot 热搜">/migu/search/hot</a>
-<a href="#mg-url-v1" data-search="migu url v1 取链">/migu/url/v1</a>
-<a href="#mg-url-v2" data-search="migu url v2 取链">/migu/url/v2</a>
-<a href="#mg-url-h5v24" data-search="migu url h5v2.4 取链">/migu/url/h5v2.4</a>
-<a href="#mg-url-dlv1" data-search="migu url dlv1 下载">/migu/url/dlv1</a>
-<a href="#mg-user-info" data-search="migu user info 用户信息">/migu/user/info</a>
-<a href="#mg-user-info-phone" data-search="migu user info phone 手机号">/migu/user/info/phone</a>
-<a href="#mg-login-phone-authn" data-search="migu login phone authn 手机登录">/migu/login/phone/authn</a>
-<a href="#mg-login-phone-msgcode" data-search="migu login phone msgcode 验证码">/migu/login/phone/msgCode</a>
-<a href="#mg-login-sim-query" data-search="migu login sim query 扫码 查询">/migu/login/sim/query</a>
-<a href="#mg-login-sim-send" data-search="migu login sim send 发送">/migu/login/sim/send</a>
-<a href="#mg-passport-checktoken" data-search="migu passport checktoken 验活">/migu/passport/checkToken</a>
-<a href="#mg-passport-getpacmtoken" data-search="migu passport getpacmtoken 换 token">/migu/passport/getPacmToken</a>
-<a href="#mg-passport-logout" data-search="migu passport logout 退出">/migu/passport/logout</a>
-<a href="#mg-passport-refresh" data-search="migu passport refresh 刷新">/migu/passport/refresh</a>
-<a href="#mg-status" data-search="migu status 状态">/migu/status</a>
-<a href="#mg-version" data-search="migu version 版本">/migu/version</a>
-<a href="#mg-lyric" data-search="migu lyric 歌词">/migu/lyric</a>
-<a href="#mg-mrc" data-search="migu mrc 歌词">/migu/mrc</a>
-<a href="#mg-resourceinfo" data-search="migu resourceinfo 资源">/migu/resourceinfo</a>
-<a href="#mg-songinfo-contentid" data-search="migu songinfo contentid 歌曲信息">/migu/songinfo/contentId</a>
-<a href="#mg-songinfo-songid" data-search="migu songinfo songid 歌曲信息">/migu/songinfo/songId</a>
-<a href="#mg-songinfo-songid-simple" data-search="migu songinfo songid simple 歌曲信息">/migu/songinfo/songId/simple</a>
+<h4>搜索</h4>
+<a href="#mg-search" data-search="migu search 搜索 搜索歌曲"><span class="t">搜索歌曲</span><span class="p">/migu/search</span></a>
+<a href="#mg-search-hot" data-search="migu search hot 热搜"><span class="t">热搜</span><span class="p">/migu/search/hot</span></a>
+<h4>取链</h4>
+<a href="#mg-url-v1" data-search="migu url v1 取链 播放链接"><span class="t">播放链接 v1</span><span class="p">/migu/url/v1</span></a>
+<a href="#mg-url-v2" data-search="migu url v2 取链 播放链接"><span class="t">播放链接 v2</span><span class="p">/migu/url/v2</span></a>
+<a href="#mg-url-h5v24" data-search="migu url h5v2.4 取链 播放链接"><span class="t">播放链接 h5v2.4</span><span class="p">/migu/url/h5v2.4</span></a>
+<a href="#mg-url-dlv1" data-search="migu url dlv1 下载 下载链接"><span class="t">下载链接</span><span class="p">/migu/url/dlv1</span></a>
+<h4>用户</h4>
+<a href="#mg-user-info" data-search="migu user info 用户信息"><span class="t">用户信息</span><span class="p">/migu/user/info</span></a>
+<a href="#mg-user-info-phone" data-search="migu user info phone 手机号"><span class="t">手机号信息</span><span class="p">/migu/user/info/phone</span></a>
+<h4>登录与会话</h4>
+<a href="#mg-login-phone-authn" data-search="migu login phone authn 手机登录"><span class="t">手机登录</span><span class="p">/migu/login/phone/authn</span></a>
+<a href="#mg-login-phone-msgcode" data-search="migu login phone msgcode 验证码 发送验证码"><span class="t">发送验证码</span><span class="p">/migu/login/phone/msgCode</span></a>
+<a href="#mg-login-sim-query" data-search="migu login sim query 查询 SIM 登录"><span class="t">SIM 登录查询</span><span class="p">/migu/login/sim/query</span></a>
+<a href="#mg-login-sim-send" data-search="migu login sim send 发送 SIM 登录"><span class="t">SIM 登录发送</span><span class="p">/migu/login/sim/send</span></a>
+<a href="#mg-passport-checktoken" data-search="migu passport checktoken 验活 会话"><span class="t">会话验活</span><span class="p">/migu/passport/checkToken</span></a>
+<a href="#mg-passport-getpacmtoken" data-search="migu passport getpacmtoken 换 token pacmtoken"><span class="t">换 pacmtoken</span><span class="p">/migu/passport/getPacmToken</span></a>
+<a href="#mg-passport-logout" data-search="migu passport logout 退出"><span class="t">退出登录</span><span class="p">/migu/passport/logout</span></a>
+<a href="#mg-passport-refresh" data-search="migu passport refresh 刷新 会话"><span class="t">刷新会话</span><span class="p">/migu/passport/refresh</span></a>
+<h4>状态</h4>
+<a href="#mg-status" data-search="migu status 状态 服务状态"><span class="t">服务状态</span><span class="p">/migu/status</span></a>
+<a href="#mg-version" data-search="migu version 版本"><span class="t">版本</span><span class="p">/migu/version</span></a>
+<h4>资源</h4>
+<a href="#mg-lyric" data-search="migu lyric 歌词"><span class="t">歌词</span><span class="p">/migu/lyric</span></a>
+<a href="#mg-mrc" data-search="migu mrc 歌词"><span class="t">MRC 歌词</span><span class="p">/migu/mrc</span></a>
+<a href="#mg-resourceinfo" data-search="migu resourceinfo 资源"><span class="t">资源信息</span><span class="p">/migu/resourceinfo</span></a>
+<a href="#mg-songinfo-contentid" data-search="migu songinfo contentid 歌曲信息"><span class="t">歌曲信息（contentId）</span><span class="p">/migu/songinfo/contentId</span></a>
+<a href="#mg-songinfo-songid" data-search="migu songinfo songid 歌曲信息"><span class="t">歌曲信息（songId）</span><span class="p">/migu/songinfo/songId</span></a>
+<a href="#mg-songinfo-songid-simple" data-search="migu songinfo songid simple 歌曲信息 简版"><span class="t">歌曲信息（简版）</span><span class="p">/migu/songinfo/songId/simple</span></a>
 <h3>网易云</h3>
-<a href="#ne-search" data-search="netease search 搜索">/netease/search</a>
-<a href="#ne-search-hot" data-search="netease search hot 热搜">/netease/search/hot</a>
-<a href="#ne-search-hot-detail" data-search="netease search hot detail 热搜详情">/netease/search/hot/detail</a>
-<a href="#ne-song-url" data-search="netease song url 取链 v2">/netease/song/url</a>
-<a href="#ne-song-url-v1" data-search="netease song url v1 取链">/netease/song/url/v1</a>
-<a href="#ne-song-download-url" data-search="netease song download url 下载">/netease/song/download/url</a>
-<a href="#ne-user-account" data-search="netease user account 账号">/netease/user/account</a>
-<a href="#ne-user-detail" data-search="netease user detail 用户详情 会员">/netease/user/detail</a>
-<a href="#ne-user-level" data-search="netease user level 等级">/netease/user/level</a>
-<a href="#ne-login-cellphone" data-search="netease login cellphone 手机号登录">/netease/login/cellphone</a>
-<a href="#ne-login-qr-key" data-search="netease login qr key 扫码 key">/netease/login/qr/key</a>
-<a href="#ne-login-qr-create" data-search="netease login qr create 扫码 二维码">/netease/login/qr/create</a>
-<a href="#ne-login-qr-check" data-search="netease login qr check 扫码 检查">/netease/login/qr/check</a>
-<a href="#ne-login-refresh" data-search="netease login refresh 刷新">/netease/login/refresh</a>
-<a href="#ne-login-status" data-search="netease login status 登录状态">/netease/login/status</a>
-<a href="#ne-logout" data-search="netease logout 退出">/netease/logout</a>
-<a href="#ne-lyric" data-search="netease lyric 歌词">/netease/lyric</a>
-<a href="#ne-song-detail" data-search="netease song detail 歌曲详情">/netease/song/detail</a>
-<a href="#ne-status" data-search="netease status 状态">/netease/status</a>
+<h4>搜索</h4>
+<a href="#ne-search" data-search="netease search 搜索"><span class="t">搜索</span><span class="p">/netease/search</span></a>
+<a href="#ne-search-hot" data-search="netease search hot 热搜"><span class="t">热搜</span><span class="p">/netease/search/hot</span></a>
+<a href="#ne-search-hot-detail" data-search="netease search hot detail 热搜详情"><span class="t">热搜详情</span><span class="p">/netease/search/hot/detail</span></a>
+<h4>取链</h4>
+<a href="#ne-song-url" data-search="netease song url 取链 v2 播放链接"><span class="t">播放链接</span><span class="p">/netease/song/url</span></a>
+<a href="#ne-song-url-v1" data-search="netease song url v1 取链 播放链接"><span class="t">播放链接 v1</span><span class="p">/netease/song/url/v1</span></a>
+<a href="#ne-song-download-url" data-search="netease song download url 下载 下载链接"><span class="t">下载链接</span><span class="p">/netease/song/download/url</span></a>
+<h4>用户</h4>
+<a href="#ne-user-account" data-search="netease user account 账号"><span class="t">账号信息</span><span class="p">/netease/user/account</span></a>
+<a href="#ne-user-detail" data-search="netease user detail 用户详情 会员"><span class="t">用户详情</span><span class="p">/netease/user/detail</span></a>
+<a href="#ne-user-level" data-search="netease user level 等级"><span class="t">用户等级</span><span class="p">/netease/user/level</span></a>
+<h4>登录</h4>
+<a href="#ne-login-cellphone" data-search="netease login cellphone 手机号登录"><span class="t">手机号登录</span><span class="p">/netease/login/cellphone</span></a>
+<a href="#ne-login-qr-key" data-search="netease login qr key 扫码 key"><span class="t">扫码 key</span><span class="p">/netease/login/qr/key</span></a>
+<a href="#ne-login-qr-create" data-search="netease login qr create 扫码 二维码 生成"><span class="t">生成二维码</span><span class="p">/netease/login/qr/create</span></a>
+<a href="#ne-login-qr-check" data-search="netease login qr check 扫码 检查 状态"><span class="t">扫码状态</span><span class="p">/netease/login/qr/check</span></a>
+<a href="#ne-login-refresh" data-search="netease login refresh 刷新"><span class="t">刷新登录</span><span class="p">/netease/login/refresh</span></a>
+<a href="#ne-login-status" data-search="netease login status 登录状态"><span class="t">登录状态</span><span class="p">/netease/login/status</span></a>
+<a href="#ne-logout" data-search="netease logout 退出"><span class="t">退出登录</span><span class="p">/netease/logout</span></a>
+<h4>歌词与歌曲</h4>
+<a href="#ne-lyric" data-search="netease lyric 歌词"><span class="t">歌词</span><span class="p">/netease/lyric</span></a>
+<a href="#ne-song-detail" data-search="netease song detail 歌曲详情"><span class="t">歌曲详情</span><span class="p">/netease/song/detail</span></a>
+<h4>状态</h4>
+<a href="#ne-status" data-search="netease status 状态 服务状态"><span class="t">服务状态</span><span class="p">/netease/status</span></a>
 </nav>
 <main class="content">
 <section class="card" id="auth">
@@ -1054,7 +1069,7 @@ pre code { font-family: var(--font-mono); }
     }
     var links = document.querySelectorAll('.sidebar a');
     for(var j = 0; j &lt; links.length; j++){
-      var lt = (links[j].getAttribute('data-search') || '').toLowerCase();
+      var lt = ((links[j].getAttribute('data-search') || '') + ' ' + links[j].textContent).toLowerCase();
       links[j].style.display = (!q || lt.indexOf(q) !== -1) ? '' : 'none';
     }
   });
