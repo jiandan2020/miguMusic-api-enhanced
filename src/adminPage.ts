@@ -58,12 +58,21 @@ audio { width: 100%; margin-top: 10px; }
 <input type="password" id="keyInput" placeholder="API Key" autocomplete="off">
 <button id="enterBtn">进入</button>
 </div>
+<label style="display:flex; gap:6px; align-items:center; margin-top:10px; font-size:14px; cursor:pointer;"><input type="checkbox" id="rememberKey"> 记住 Key（保存在当前浏览器，下次打开不用再输）</label>
 <p class="error" id="gateErr"></p>
 </section>
 <div id="dash" hidden>
 <section class="card">
 <h2>会话状态</h2>
 <div id="sessionBody"><p class="muted">加载中…</p></div>
+<div style="margin-top:12px;">
+<div class="muted" style="margin-bottom:4px;">pacmtoken</div>
+<div id="pacmTokenVal" style="word-break:break-all; font-size:13px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px;">加载中…</div>
+<div class="row" style="margin-top:8px;">
+<button id="togglePacmBtn" class="secondary">显示完整 token</button>
+<button id="copyPacmBtn" class="secondary">复制</button>
+</div>
+</div>
 <div class="row" style="margin-top:12px;">
 <button id="refreshBtn" class="secondary">立即刷新</button>
 <button id="logoutBtn" class="secondary">退出登录</button>
@@ -92,14 +101,6 @@ audio { width: 100%; margin-top: 10px; }
 <option value="v1">v1</option>
 <option value="v2">v2</option>
 </select>
-<select id="toneSel">
-<option value="PQ" selected>PQ · 128k</option>
-<option value="LQ">LQ · 64k</option>
-<option value="HQ">HQ · 320k</option>
-<option value="SQ">SQ · 无损</option>
-<option value="ZQ24">ZQ24 · 24bit</option>
-<option value="ZQ32">ZQ32 · 32bit</option>
-</select>
 <button id="getUrlBtn">获取播放链接</button>
 </div>
 <p class="error" id="playErr"></p>
@@ -114,9 +115,14 @@ audio { width: 100%; margin-top: 10px; }
 </main>
 <script>
 function $(id){ return document.getElementById(id); }
-var apiKey = sessionStorage.getItem('migu_admin_key') || '';
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+var apiKey = lsGet('migu_admin_key') || sessionStorage.getItem('migu_admin_key') || '';
 var selectedSong = null;
 var songs = [];
+var currentPacmToken = '';
+var pacmShown = false;
 
 function esc(s){
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -140,6 +146,28 @@ function showDash(){
   $('gate').hidden = true;
   $('dash').hidden = false;
 }
+function renderPacmToken(){
+  var el = $('pacmTokenVal');
+  if(!currentPacmToken){ el.textContent = '无（未登录或已退出）'; $('togglePacmBtn').textContent = '显示完整 token'; return; }
+  if(pacmShown){ el.textContent = currentPacmToken; $('togglePacmBtn').textContent = '隐藏 token'; }
+  else { el.textContent = currentPacmToken.slice(0, 12) + '…' + currentPacmToken.slice(-8); $('togglePacmBtn').textContent = '显示完整 token'; }
+}
+function togglePacm(){ pacmShown = !pacmShown; renderPacmToken(); }
+function copyPacm(){
+  var v = currentPacmToken;
+  if(!v){ return; }
+  function done(ok){ $('copyPacmBtn').textContent = ok ? '已复制' : '复制失败'; setTimeout(function(){ $('copyPacmBtn').textContent = '复制'; }, 1500); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(v).then(function(){ done(true); }, function(){ done(false); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = v;
+    document.body.appendChild(ta);
+    ta.select();
+    try { done(document.execCommand('copy')); } catch(e){ done(false); }
+    document.body.removeChild(ta);
+  }
+}
 async function enterKey(){
   var v = $('keyInput').value.trim();
   if(!v){ $('gateErr').textContent = '请先输入 Key'; return; }
@@ -148,7 +176,8 @@ async function enterKey(){
   $('enterBtn').disabled = true;
   try {
     await api('/migu/passport/refresh');
-    sessionStorage.setItem('migu_admin_key', apiKey);
+    if($('rememberKey').checked){ lsSet('migu_admin_key', apiKey); sessionStorage.removeItem('migu_admin_key'); }
+    else { sessionStorage.setItem('migu_admin_key', apiKey); lsDel('migu_admin_key'); }
     showDash();
     loadAll();
   } catch(e){
@@ -160,6 +189,7 @@ async function enterKey(){
 function exitAdmin(){
   apiKey = '';
   sessionStorage.removeItem('migu_admin_key');
+  lsDel('migu_admin_key');
   $('keyInput').value = '';
   showGate('');
 }
@@ -181,6 +211,9 @@ async function loadSession(){
 async function loadUser(){
   try {
     var j = await api('/migu/user/info');
+    currentPacmToken = j.pacmtoken || '';
+    pacmShown = false;
+    renderPacmToken();
     var it = j.userInfoItem || null;
     if(!it || !it.userId){
       $('userBody').innerHTML = '<p class="muted">未登录或已退出，请重新登录。</p>';
@@ -214,6 +247,7 @@ async function loadUser(){
   } catch(e){
     $('userBody').innerHTML = '<p class="error">加载失败</p>';
     $('memberBody').innerHTML = '<p class="error">加载失败</p>';
+    $('pacmTokenVal').textContent = '加载失败';
   }
 }
 async function loadStatus(){
@@ -254,6 +288,39 @@ function selectSong(i){
   $('playResult').innerHTML = '';
   $('audioWrap').innerHTML = '';
 }
+function fmtSize(bytes){
+  var b = parseInt(bytes, 10);
+  if(!b){ return ''; }
+  if(b >= 1048576){ return (b / 1048576).toFixed(1) + 'MB'; }
+  return Math.round(b / 1024) + 'KB';
+}
+function songToneList(s){
+  var formats = s.audioFormats || [];
+  var list = [];
+  formats.forEach(function(f){ if(f.formatType && list.indexOf(f.formatType) < 0){ list.push(f.formatType); } });
+  if(!list.length){ list = ['LQ', 'PQ', 'HQ', 'SQ', 'ZQ24', 'ZQ32']; }
+  return list;
+}
+function toneOptions(s){
+  var formats = s.audioFormats || [];
+  var seen = {};
+  var opts = '';
+  formats.forEach(function(f){
+    var t = f.formatType;
+    if(!t || seen[t]){ return; }
+    seen[t] = true;
+    var label = t;
+    var sz = fmtSize(f.isize || f.asize);
+    if(sz){ label += ' · ' + sz; }
+    opts += '<option value="' + esc(t) + '"' + (t === s.tone ? ' selected' : '') + '>' + esc(label) + '</option>';
+  });
+  if(!opts){
+    ['LQ', 'PQ', 'HQ', 'SQ', 'ZQ24', 'ZQ32'].forEach(function(t){
+      opts += '<option value="' + t + '"' + (t === s.tone ? ' selected' : '') + '>' + t + '</option>';
+    });
+  }
+  return opts;
+}
 async function doSearch(){
   var text = $('searchInput').value.trim();
   if(!text){ $('searchErr').textContent = '请输入歌名'; return; }
@@ -262,17 +329,34 @@ async function doSearch(){
   try {
     var j = await api('/migu/search?text=' + encodeURIComponent(text));
     var items = (j.data && j.data.items) || [];
-    songs = items.slice(0, 10).map(function(it){ return it.song || {}; });
+    songs = items.slice(0, 10).map(function(it){
+      var s = it.song || {};
+      var tones = songToneList(s);
+      s.tone = tones.indexOf('PQ') >= 0 ? 'PQ' : tones[0];
+      return s;
+    });
     if(!songs.length){
       $('searchResults').innerHTML = '<p class="muted">没有找到相关歌曲' + (j.info ? '（' + esc(j.info) + '）' : '') + '</p>';
       return;
     }
     var html = '';
-    songs.forEach(function(s, i){ html += '<div class="song" data-i="' + i + '">' + esc(songTitle(s)) + '</div>'; });
+    songs.forEach(function(s, i){
+      html += '<div class="song" data-i="' + i + '">'
+        + '<div>' + esc(songTitle(s)) + '</div>'
+        + '<div class="row" style="margin-top:6px;"><span class="muted">音质</span><select class="toneSel" data-i="' + i + '">' + toneOptions(s) + '</select></div>'
+        + '</div>';
+    });
     $('searchResults').innerHTML = html;
     var nodes = $('searchResults').querySelectorAll('.song');
     nodes.forEach(function(n){
       n.addEventListener('click', function(){ selectSong(parseInt(n.getAttribute('data-i'), 10)); });
+    });
+    var toneSels = $('searchResults').querySelectorAll('.toneSel');
+    toneSels.forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var idx = parseInt(sel.getAttribute('data-i'), 10);
+        if(songs[idx]){ songs[idx].tone = sel.value; }
+      });
     });
     selectSong(0);
   } catch(e){
@@ -299,7 +383,7 @@ function findDialog(j){
 async function getPlayUrl(){
   if(!selectedSong){ $('playErr').textContent = '请先搜索并选择一首歌'; return; }
   var ep = $('endpointSel').value;
-  var tone = $('toneSel').value;
+  var tone = (selectedSong && selectedSong.tone) || 'PQ';
   var s = selectedSong;
   var q = 'contentId=' + encodeURIComponent(s.contentId || '') + '&copyrightId=' + encodeURIComponent(s.copyrightId || '') + '&toneFlag=' + tone + '&resourceType=' + encodeURIComponent(s.resourceType || '2');
   $('playErr').textContent = '';
@@ -348,6 +432,9 @@ function copyUrl(){
 }
 $('enterBtn').addEventListener('click', enterKey);
 $('keyInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ enterKey(); } });
+$('togglePacmBtn').addEventListener('click', togglePacm);
+$('copyPacmBtn').addEventListener('click', copyPacm);
+$('rememberKey').checked = !!lsGet('migu_admin_key');
 $('searchBtn').addEventListener('click', doSearch);
 $('searchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doSearch(); } });
 $('getUrlBtn').addEventListener('click', getPlayUrl);
