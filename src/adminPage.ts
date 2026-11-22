@@ -37,8 +37,11 @@ button.secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; 
 .kv:last-child { border-bottom: none; }
 .kv span:first-child { color: #6b7280; flex: none; }
 .kv span:last-child { text-align: right; word-break: break-all; }
-.song { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
+.song { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
 .song.sel { border-color: #4f46e5; background: #eef2ff; }
+.songTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toneSel { flex: none; max-width: 132px; font-size: 14px; padding: 7px 8px; }
+.playBtn { flex: none; padding: 7px 12px; }
 .avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
 .member { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
 .member img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; }
@@ -342,8 +345,9 @@ async function doSearch(){
     var html = '';
     songs.forEach(function(s, i){
       html += '<div class="song" data-i="' + i + '">'
-        + '<div>' + esc(songTitle(s)) + '</div>'
-        + '<div class="row" style="margin-top:6px;"><span class="muted">音质</span><select class="toneSel" data-i="' + i + '">' + toneOptions(s) + '</select></div>'
+        + '<div class="songTitle">' + esc(songTitle(s)) + '</div>'
+        + '<select class="toneSel" data-i="' + i + '">' + toneOptions(s) + '</select>'
+        + '<button class="playBtn" data-i="' + i + '">播放</button>'
         + '</div>';
     });
     $('searchResults').innerHTML = html;
@@ -356,6 +360,13 @@ async function doSearch(){
       sel.addEventListener('change', function(){
         var idx = parseInt(sel.getAttribute('data-i'), 10);
         if(songs[idx]){ songs[idx].tone = sel.value; }
+      });
+    });
+    var playBtns = $('searchResults').querySelectorAll('.playBtn');
+    playBtns.forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        playSong(parseInt(btn.getAttribute('data-i'), 10));
       });
     });
     selectSong(0);
@@ -380,7 +391,11 @@ function findDialog(j){
   var d = j.data || {};
   return d.dialogInfo || j.dialogInfo || null;
 }
-async function getPlayUrl(){
+async function playSong(i){
+  selectSong(i);
+  await getPlayUrl(true);
+}
+async function getPlayUrl(autoPlay){
   if(!selectedSong){ $('playErr').textContent = '请先搜索并选择一首歌'; return; }
   var ep = $('endpointSel').value;
   var tone = (selectedSong && selectedSong.tone) || 'PQ';
@@ -409,6 +424,10 @@ async function getPlayUrl(){
       + '<div class="row" style="margin-top:8px;"><input type="text" id="playUrlInput" readonly value="' + esc(url) + '"><button id="copyBtn" class="secondary">复制链接</button></div>';
     $('audioWrap').innerHTML = '<audio controls preload="none" src="' + esc(url) + '"></audio>';
     $('copyBtn').addEventListener('click', copyUrl);
+    if(autoPlay){
+      var audio = $('audioWrap').querySelector('audio');
+      if(audio){ audio.play().catch(function(){}); }
+    }
   } catch(e){
     $('playResult').innerHTML = '<p class="error">获取失败</p>';
   }
@@ -437,7 +456,7 @@ $('copyPacmBtn').addEventListener('click', copyPacm);
 $('rememberKey').checked = !!lsGet('migu_admin_key');
 $('searchBtn').addEventListener('click', doSearch);
 $('searchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doSearch(); } });
-$('getUrlBtn').addEventListener('click', getPlayUrl);
+$('getUrlBtn').addEventListener('click', function(){ getPlayUrl(false); });
 $('refreshBtn').addEventListener('click', loadSession);
 $('logoutBtn').addEventListener('click', doLogout);
 $('exitBtn').addEventListener('click', exitAdmin);
