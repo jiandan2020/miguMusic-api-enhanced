@@ -1,6 +1,8 @@
 /**
  * /miguadmin 管理页面（单文件 HTML，内联 CSS/JS，无外部依赖）。
  *
+ * - 样式跟随一言 /stats（hitokoto.xzccs.top/stats）的设计变量：靛蓝主色
+ *   #6366F1、浅色背景、圆角卡片、胶囊状态徽章。
  * - 页面本身公开（见 src/middleware/auth.ts 的 PUBLIC_PATHS），否则没 Key
  *   会直接返回 401 JSON、连输入框都看不到；真正的数据请求都要带 Key，
  *   没通过校验什么都看不到、也调不动。
@@ -16,29 +18,63 @@ export const adminPageHtml = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>咪咕 API 管理</title>
 <style>
+/* 样式跟随一言 /stats（hitokoto.xzccs.top/stats）的设计变量：靛蓝主色、浅色背景、圆角卡片。 */
+:root {
+  --color-primary: #6366f1;
+  --color-primary-hover: #5457e8;
+  --color-primary-container: #e0e7ff;
+  --color-primary-text: #3730a3;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-variant: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-success: #16a34a;
+  --color-success-container: #dcfce7;
+  --color-on-success-container: #14532d;
+  --color-error: #dc2626;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #7f1d1d;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --font-sans: -apple-system, "BlinkMacSystemFont", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f6f7f9; color: #1f2937; }
-header { background: #4f46e5; color: #fff; padding: 18px 16px; }
-header h1 { margin: 0; font-size: 20px; }
-header p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+body { margin: 0; font-family: var(--font-sans); background: var(--color-background); color: var(--color-text); }
+.page-head { padding: 24px 0 8px; }
+.page-head .eyebrow { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); }
+.page-head h1 { margin: 0; font-size: 24px; }
+.page-head .intro { margin: 6px 0 0; font-size: 14px; color: var(--color-text-secondary); }
 main { max-width: 720px; margin: 0 auto; padding: 16px; }
-.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .card h2 { margin: 0 0 12px; font-size: 17px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-input[type=text], input[type=password], select { font-size: 15px; padding: 9px 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; color: #1f2937; }
+input[type=text], input[type=password], select { font-size: 15px; padding: 9px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
+input[type=text]:focus, input[type=password]:focus, select:focus { outline: 2px solid var(--color-primary); outline-offset: 0; }
 input[type=text], input[type=password] { flex: 1; min-width: 0; }
-button { font-size: 15px; padding: 9px 16px; border-radius: 8px; border: none; background: #4f46e5; color: #fff; cursor: pointer; }
+button { font-size: 15px; padding: 9px 16px; border-radius: var(--radius-md); border: none; background: var(--color-primary); color: #fff; cursor: pointer; }
+button:hover { background: var(--color-primary-hover); }
 button:disabled { opacity: .6; cursor: default; }
-button.secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
-.muted { color: #6b7280; font-size: 13px; }
-.error { color: #dc2626; font-size: 14px; }
-.ok { color: #059669; }
-.kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+button.secondary { background: transparent; color: var(--color-primary); border: 1px solid var(--color-border); }
+button.secondary:hover { background: var(--color-primary-container); }
+.pill { display: inline-block; padding: 4px 12px; border-radius: var(--radius-full); font-size: 13px; }
+.pill.ok { background: var(--color-success-container); color: var(--color-on-success-container); }
+.pill.err { background: var(--color-error-container); color: var(--color-on-error-container); }
+.muted { color: var(--color-text-secondary); font-size: 13px; }
+.error { color: var(--color-error); font-size: 14px; }
+.ok { color: var(--color-success); }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--color-surface-variant); font-size: 14px; }
 .kv:last-child { border-bottom: none; }
-.kv span:first-child { color: #6b7280; flex: none; }
+.kv span:first-child { color: var(--color-text-secondary); flex: none; }
 .kv span:last-child { text-align: right; word-break: break-all; }
-.song { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; cursor: pointer; font-size: 14px; }
-.song.sel { border-color: #4f46e5; background: #eef2ff; }
+.song { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; font-size: 14px; background: var(--color-surface); }
+.song.sel { border-color: var(--color-primary); background: var(--color-primary-container); }
 .songTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .toneSel { flex: none; max-width: 132px; font-size: 14px; padding: 7px 8px; }
 .playBtn { flex: none; padding: 7px 12px; }
@@ -49,11 +85,12 @@ audio { width: 100%; margin-top: 10px; }
 </style>
 </head>
 <body>
-<header>
-<h1>咪咕 API 管理</h1>
-<p>migu.api.xzccs.top · 仅自己使用</p>
-</header>
 <main>
+<header class="page-head">
+<p class="eyebrow">MIGU · ADMIN</p>
+<h1>咪咕 API 管理</h1>
+<p class="intro">migu.api.xzccs.top · 会话、用户与播放测试</p>
+</header>
 <section class="card" id="gate">
 <h2>输入 Key 进入</h2>
 <p class="muted">Key 与 EdgeOne 控制台的 API_KEY 一致，只保存在当前标签页，关闭即清除。</p>
@@ -70,7 +107,7 @@ audio { width: 100%; margin-top: 10px; }
 <div id="sessionBody"><p class="muted">加载中…</p></div>
 <div style="margin-top:12px;">
 <div class="muted" style="margin-bottom:4px;">pacmtoken</div>
-<div id="pacmTokenVal" style="word-break:break-all; font-size:13px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px;">加载中…</div>
+<div id="pacmTokenVal" style="word-break:break-all; font-size:13px; background:var(--color-surface-variant); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:8px 10px;">加载中…</div>
 <div class="row" style="margin-top:8px;">
 <button id="togglePacmBtn" class="secondary">显示完整 token</button>
 <button id="copyPacmBtn" class="secondary">复制</button>
@@ -81,6 +118,7 @@ audio { width: 100%; margin-top: 10px; }
 <button id="logoutBtn" class="secondary">退出登录</button>
 <button id="exitBtn" class="secondary">退出管理</button>
 </div>
+<p id="refreshMsg" class="muted" role="status"></p>
 </section>
 <section class="card">
 <h2>当前用户</h2>
@@ -197,7 +235,7 @@ function exitAdmin(){
   showGate('');
 }
 var STATUS_TEXT = { alive: '运行中', refreshed: '已刷新', no_session: '未登录', session_dead: '已失效，需重新登录', kv_unavailable: 'KV 未绑定', error: '异常' };
-function statusClass(s){ return (s === 'alive' || s === 'refreshed') ? 'ok' : 'error'; }
+function statusClass(s){ return (s === 'alive' || s === 'refreshed') ? 'pill ok' : 'pill err'; }
 async function loadSession(){
   try {
     var j = await api('/migu/passport/refresh');
@@ -268,14 +306,28 @@ function loadAll(){ loadSession(); loadUser(); loadStatus(); }
 async function doRefresh(){
   // 用 /user/info/phone 主动轮换 pacmtoken（返回新 token 并写回 KV），
   // 再刷新会话状态与用户信息；token 已死时换不到，会照实显示 session_dead。
+  var msg = $('refreshMsg');
+  msg.textContent = '刷新中…';
+  msg.className = 'muted';
   $('refreshBtn').disabled = true;
+  var rotated = false;
+  var failInfo = '';
   try {
     var j = await api('/migu/user/info/phone');
-    if(j.pacmtoken){ currentPacmToken = j.pacmtoken; pacmShown = false; renderPacmToken(); }
+    if(j.pacmtoken){ currentPacmToken = j.pacmtoken; pacmShown = false; renderPacmToken(); rotated = true; }
+    else if(j.info){ failInfo = j.info; }
   } catch(e){
-    // 失败时不阻断，继续刷新会话状态（会显示真实状态）
+    if(e && e.code === 401){ failInfo = 'Key 已失效，请重新进入'; }
+    // 其他失败时不阻断，继续刷新会话状态（会显示真实状态）
   } finally {
     $('refreshBtn').disabled = false;
+  }
+  if(rotated){
+    msg.textContent = '已刷新，pacmtoken 已轮换';
+    msg.className = 'ok';
+  } else {
+    msg.textContent = '刷新失败' + (failInfo ? '（' + failInfo + '）' : '，token 可能已失效，请重新登录');
+    msg.className = 'error';
   }
   loadSession();
   loadUser();
