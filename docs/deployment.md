@@ -39,7 +39,9 @@ USE_DATABASE=true
 登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
 以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量；
 接口返回里带了新的 pacmtoken 时自动写回（上游文档也写明返回的 pacmtoken
-字段就是用来拿刷新后的登录凭证的）；定时任务每 6 小时验一次。
+字段就是用来拿刷新后的登录凭证的）；定时任务每 6 小时验一次，活着就
+再调 `/migu/user/info/phone` 主动轮换一次 token（它会在响应 cookie 里
+带回新的 pacmtoken；管理页面的“立即刷新”按钮也是调这个接口）。
 **不自动重新登录**：pacmtoken 死了就报 `session_dead`，等手动重新登录
 一次——实测 ST 换 token 只能换一次，登录时已经换过一次了，存着的 ST
 换不到，不再尝试。
@@ -61,19 +63,22 @@ USE_DATABASE=true
 
 | 接口 | 说明 |
 | ---- | ---- |
-| `GET /migu/passport/refresh` | 刷新一次会话：返回 `alive`（还活着）、`no_session`（还没登录过）、`session_dead`（pacmtoken 已失效，需手动重新登录）、`kv_unavailable`（KV 未绑定）、`error`（网络问题）。`refreshed` 已保留但目前不可达（ST 换新已移除）。需要 API_KEY 鉴权 |
+| `GET /migu/passport/refresh` | 刷新一次会话：返回 `alive`（还活着）、`no_session`（还没登录过）、`session_dead`（pacmtoken 已失效，需手动重新登录）、`kv_unavailable`（KV 未绑定）、`error`（网络问题）。`refreshed` 已保留但目前不可达（ST 换新已移除）。只验活、不换 token。需要 API_KEY 鉴权 |
 | `GET /migu/passport/checkToken` | 不传 `pacmtoken` 时验 KV 里存的会话 |
+| `GET /migu/user/info/phone` | 返回用户完整手机号、彩铃信息和新的 pacmtoken；调用一次即主动轮换 token（新 token 自动写回 KV）。定时任务与管理页面的“立即刷新”都用它来轮换 |
 | `GET /migu/passport/logout` | 退出登录；退出的是存量会话且咪咕确认成功时，清掉 KV 里的登录态 |
 
 ## 管理界面
 
 打开 `https://<域名>/miguadmin`，输入 `API_KEY` 进入（页面本身公开，里面的
-数据请求都要带 Key 校验后才能看到内容；Key 只存在当前标签页的
-sessionStorage，关闭即清除）。
+数据请求都要带 Key 校验后才能看到内容；Key 默认只存在当前标签页的
+sessionStorage，关闭即清除，勾“记住 Key”则存在当前浏览器的 localStorage，
+下次打开不用再输）。
 
 面板内容：会话状态（可立即刷新、退出登录）、当前用户信息、会员等级
 （`userMemberInfos` 与 `userLevelInfo`）、播放测试（搜歌后自选接口
 v1 / v2 / h5v2.4 与音质 toneFlag，显示播放链接并可直接试播）、接口状态。
+“立即刷新”调 `/migu/user/info/phone` 主动轮换一次 pacmtoken。
 页面实现在 `src/adminPage.ts`（单文件 HTML），路由在 `src/app.ts`。
 
 ### CORS 配置规则

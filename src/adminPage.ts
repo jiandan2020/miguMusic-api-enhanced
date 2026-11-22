@@ -265,6 +265,21 @@ async function loadStatus(){
   }
 }
 function loadAll(){ loadSession(); loadUser(); loadStatus(); }
+async function doRefresh(){
+  // 用 /user/info/phone 主动轮换 pacmtoken（返回新 token 并写回 KV），
+  // 再刷新会话状态与用户信息；token 已死时换不到，会照实显示 session_dead。
+  $('refreshBtn').disabled = true;
+  try {
+    var j = await api('/migu/user/info/phone');
+    if(j.pacmtoken){ currentPacmToken = j.pacmtoken; pacmShown = false; renderPacmToken(); }
+  } catch(e){
+    // 失败时不阻断，继续刷新会话状态（会显示真实状态）
+  } finally {
+    $('refreshBtn').disabled = false;
+  }
+  loadSession();
+  loadUser();
+}
 async function doLogout(){
   if(!confirm('确定退出登录吗？这会清除服务端存着的登录态，之后要重新登录。')) return;
   try {
@@ -457,7 +472,7 @@ $('rememberKey').checked = !!lsGet('migu_admin_key');
 $('searchBtn').addEventListener('click', doSearch);
 $('searchInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ doSearch(); } });
 $('getUrlBtn').addEventListener('click', function(){ getPlayUrl(false); });
-$('refreshBtn').addEventListener('click', loadSession);
+$('refreshBtn').addEventListener('click', doRefresh);
 $('logoutBtn').addEventListener('click', doLogout);
 $('exitBtn').addEventListener('click', exitAdmin);
 if(apiKey){

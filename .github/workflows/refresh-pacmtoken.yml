@@ -1,9 +1,13 @@
 # 定时刷新 KV 里存的咪咕登录态（pacmtoken 保活）
 #
-# 每 6 小时调一次 /migu/passport/refresh：
-#   - token 还活着 → 只更新检查时间；
-#   - token 死了 → 用存着的 ST token 换一个新的；
-#   - ST 也死了 → 接口返回 session_dead，本任务失败，提醒手动重新登录一次。
+# 每 6 小时两步走：
+#   1. 调 /migu/passport/refresh 验活：
+#      - token 还活着 → 继续；
+#      - token 死了 → 接口返回 session_dead，本任务失败，提醒手动重新登录一次。
+#   2. 调 /migu/user/info/phone 主动轮换 pacmtoken（返回新 token 并写回 KV）：
+#      - 换到新 token → 本次刷新完成；
+#      - 没换到（接口失败或没返回新 token）→ 只记一条警告，不让任务失败，
+#        会话仍有效，下次定时再试。
 # 刷新路径里没有任何自动重新登录；失败时不重试、不发短信。
 #
 # 需要在仓库 Settings → Secrets and variables → Actions 里加：
@@ -21,13 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: 调用刷新接口
+      - name: 验活并轮换 pacmtoken
         run: |
           resp=$(curl -s -m 60 "https://migu.api.xzccs.top/migu/passport/refresh?key=${{ secrets.MIGU_API_KEY }}")
           echo "$resp"
-          if echo "$resp" | grep -q '"status":"alive"\|"status":"refreshed"'; then
-            echo "pacmtoken 有效"
-          else
+          if ! echo "$resp" | grep -q '"status":"alive"\|"status":"refreshed"'; then
             echo "pacmtoken 未处于有效状态（可能需要手动重新登录一次）"
             exit 1
+          fi
+          echo "pacmtoken 有效，开始轮换"
+          phone_resp=$(curl -s -m 60 "https://migu.api.xzccs.top/migu/user/info/phone?key=${{ secrets.MIGU_API_KEY }}")
+          echo "$phone_resp"
+          if echo "$phone_resp" | grep -q '"pacmtoken":"[^"]'; then
+            echo "pacmtoken 已轮换"
+          else
+            echo "警告：本次未能轮换 pacmtoken（会话仍有效，下次定时再试）"
           fi
