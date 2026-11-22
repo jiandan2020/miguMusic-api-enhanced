@@ -38,9 +38,11 @@ USE_DATABASE=true
 
 登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
 以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量；
-接口返回里带了新的 pacmtoken 时自动写回；定时任务每 6 小时验一次，
-死了就用存着的 ST token 换一个新的。**不自动重新登录**：ST 也死了就
-停下，等手动重新登录一次。
+接口返回里带了新的 pacmtoken 时自动写回（上游文档也写明返回的 pacmtoken
+字段就是用来拿刷新后的登录凭证的）；定时任务每 6 小时验一次。
+**不自动重新登录**：pacmtoken 死了就报 `session_dead`，等手动重新登录
+一次——实测 ST 换 token 只能换一次，登录时已经换过一次了，存着的 ST
+换不到，不再尝试。
 
 需要做的配置：
 
@@ -59,7 +61,7 @@ USE_DATABASE=true
 
 | 接口 | 说明 |
 | ---- | ---- |
-| `GET /migu/passport/refresh` | 刷新一次会话：返回 `alive`（还活着）、`refreshed`（已用 ST 换新）、`no_session`（还没登录过）、`session_dead`（ST 也死了，需手动重新登录）、`kv_unavailable`（KV 未绑定）、`error`（网络问题）。需要 API_KEY 鉴权 |
+| `GET /migu/passport/refresh` | 刷新一次会话：返回 `alive`（还活着）、`no_session`（还没登录过）、`session_dead`（pacmtoken 已失效，需手动重新登录）、`kv_unavailable`（KV 未绑定）、`error`（网络问题）。`refreshed` 已保留但目前不可达（ST 换新已移除）。需要 API_KEY 鉴权 |
 | `GET /migu/passport/checkToken` | 不传 `pacmtoken` 时验 KV 里存的会话 |
 | `GET /migu/passport/logout` | 退出登录；退出的是存量会话且咪咕确认成功时，清掉 KV 里的登录态 |
 

@@ -1,5 +1,4 @@
 import type { Context } from 'hono';
-import { getPacmToken } from '../modules/passport_pacmToken';
 import { checkToken } from '../modules/passport_checkToken';
 
 /**
@@ -8,8 +7,10 @@ import { checkToken } from '../modules/passport_checkToken';
  * - 登录一次（SIM 快捷登录或手机验证码登录）后，登录态存在 EdgeOne KV 里，
  *   以后调需要 pacmtoken 的接口不用再传 `?pacmtoken=`，服务端自动用存量。
  * - 44 个会带 `newPacmToken` 的接口返回了新 token 时，写回 KV（被动更新）。
- * - 定时 / 手动刷新时：先 checkToken 验活；pacmtoken 死了就用存着的 ST
- *   token 去换一个新的；ST 也死了就停下，等用户手动重新登录。
+ * - 定时 / 手动刷新时：先 checkToken 验活；活着就更新 lastCheckedAt；
+ *   死了就报 session_dead，等用户手动重新登录（不再拿 ST 换新：实测
+ *   ST 换 token 只能换一次，登录时已经换过一次了，存着的 ST 换不到，
+ *   咪咕返回 199999 空 token）。
  * - **不自动重新登录**：刷新路径里没有任何 SIM 发送、验证码、账号密码
  *   登录调用；会话彻底失效时只报状态，不会替用户登录。
  *
@@ -23,7 +24,7 @@ import { checkToken } from '../modules/passport_checkToken';
 export interface PacmSession {
     /** 当前有效的 pacmtoken */
     pacmtoken: string;
-    /** 登录时拿到的 ST token，用于 pacmtoken 死了以后换新的 */
+    /** 登录时拿到的 ST token（仅作记录；实测 ST 换 token 只能换一次，登录时已用过，不再用于换新） */
     stToken: string;
     /** 当初登录的方式 */
     loginMethod: 'sim' | 'phone';
@@ -157,6 +158,8 @@ export async function noteRotatedPacmToken(fromStore: boolean, newPacmToken: str
     await saveSession({ ...session, pacmtoken: newPacmToken, updatedAt: new Date().toISOString() });
 }
 
+// 'refreshed' 目前不可达：ST 换 token 已移除（实测只能换一次）；保留该
+// 状态值是为了兼容调用方（刷新接口与定时任务仍按 alive/refreshed 判成功）。
 export type RefreshStatus = 'alive' | 'refreshed' | 'no_session' | 'session_dead' | 'kv_unavailable' | 'error';
 
 export interface RefreshResult {
@@ -192,8 +195,8 @@ async function checkAlive(pacmtoken: string): Promise<{ alive: boolean; transpor
 }
 
 /**
- * 刷新一次会话：验活 → 死了就用 ST 换新的 → ST 也死了就报会话失效。
- * 全程不重新登录；失败时不重试、不发短信。
+ * 刷新一次会话：验活 → 活着就更新检查时间，死了就报会话失效。
+ * 全程不重新登录，也不拿 ST 换 token（实测 ST 只能换一次）；失败时不重试、不发短信。
  */
 export async function refreshPacmToken(): Promise<RefreshResult> {
     const kvBound = isKvAvailable();
@@ -225,24 +228,8 @@ export async function refreshPacmToken(): Promise<RefreshResult> {
         }
     }
 
-    // 2) pacmtoken 死了，用存着的 ST token 换一个新的（不是重新登录）
-    if (!session.stToken) {
-        return { ...base, status: 'session_dead', reason: '没有存着的 ST token，需要手动重新登录' };
-    }
-    let exchanged: { pacmToken?: string; body?: { error?: string } };
-    try {
-        exchanged = await getPacmToken(session.stToken);
-    } catch (err) {
-        const responseData = (err as { response?: { data?: unknown } })?.response?.data;
-        if (responseData !== undefined) {
-            return { ...base, status: 'session_dead', reason: 'ST token 已失效，需要手动重新登录' };
-        }
-        return { ...base, status: 'error', reason: `换 token 时请求失败：${errorMessage(err)}` };
-    }
-    const newPacm = exchanged?.pacmToken || '';
-    if (!newPacm || exchanged?.body?.error) {
-        return { ...base, status: 'session_dead', reason: 'ST token 已失效，需要手动重新登录' };
-    }
-    await saveSession({ ...session, pacmtoken: newPacm, updatedAt: now, lastCheckedAt: now });
-    return { ...base, status: 'refreshed', updatedAt: now, lastCheckedAt: now };
+    // 2) pacmtoken 死了或没有可用的 pacmtoken：不再拿 ST 换新——实测 ST
+    // 换 token 只能换一次，登录时已经换过一次了，存着的 ST 换不到
+    // （咪咕返回 199999 空 token）。直接报会话失效，等用户手动重新登录。
+    return { ...base, status: 'session_dead', reason: 'pacmtoken 已失效，存着的 ST 已使用过、无法再次换取，需要手动重新登录' };
 }
