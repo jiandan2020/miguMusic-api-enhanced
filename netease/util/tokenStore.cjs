@@ -12,6 +12,7 @@ const KV_BINDING_NAME = 'NETEASE_KV'
 const KEY_ANON_TOKEN = 'netease_anon_token'
 const KEY_XEAPI_PUBLIC_KEY = 'netease_xeapi_public_key'
 const KEY_DEVICE_ID = 'netease_device_id'
+const KEY_USER_COOKIE = 'netease_user_cookie'
 
 function getKvBinding() {
   const kv = globalThis[KV_BINDING_NAME]
@@ -30,6 +31,7 @@ let anonTokenMem = null // string | null（null = 未加载过）
 let xeapiPublicKeyMem = null // object | null
 let deviceIdMem = null // string | null
 let cnIpMem = null // string | null
+let userCookieMem = null // string | null（null = 未加载过；用户登录会话，只存 name=value 对）
 
 async function kvGet(key) {
   const kv = getKvBinding()
@@ -97,6 +99,21 @@ async function setDeviceId(id) {
   return deviceIdMem
 }
 
+// 用户登录会话 cookie（MUSIC_U 等，只存 name=value 对，不存属性）。
+// 登录成功（扫码/手机号/刷新）时由路由存入；请求没带 cookie 时由路由
+// 取出来注入。KV 未绑定时只用内存，isolate 切换后失效，需重新登录。
+async function getUserCookie() {
+  if (userCookieMem !== null) return userCookieMem
+  const stored = await kvGet(KEY_USER_COOKIE)
+  userCookieMem = stored || ''
+  return userCookieMem
+}
+async function setUserCookie(cookie) {
+  userCookieMem = cookie || ''
+  await kvPut(KEY_USER_COOKIE, userCookieMem)
+  return userCookieMem
+}
+
 function getCnIp() {
   return cnIpMem || ''
 }
@@ -136,6 +153,8 @@ module.exports = {
   setXeapiPublicKey,
   getDeviceId,
   setDeviceId,
+  getUserCookie,
+  setUserCookie,
   getCnIp,
   setCnIp,
   ensureIdentity,

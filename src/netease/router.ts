@@ -13,7 +13,7 @@ import createRequest from '../../netease/util/request.cjs'
 // @ts-ignore — 同上
 import { cookieToJson, hasCookie } from '../../netease/util/index.cjs'
 // @ts-ignore — 同上
-import { ensureIdentity, getCnIp } from '../../netease/util/tokenStore.cjs'
+import { ensureIdentity, getCnIp, getUserCookie, setUserCookie } from '../../netease/util/tokenStore.cjs'
 import { ensureConfig } from './configRefresh'
 import { neteaseRoutes } from './routes'
 
@@ -72,6 +72,39 @@ function appendCookies(res: Response, cookies: unknown): Response {
   return res
 }
 
+// 从 Set-Cookie 数组里只取 name=value，丢掉 Max-Age/Expires/Path 等属性，
+// 拼成可直接当 Cookie 请求头用的字符串。
+function extractCookiePairs(cookies: unknown): string {
+  if (!Array.isArray(cookies)) return ''
+  const pairs: string[] = []
+  for (const ck of cookies) {
+    if (typeof ck !== 'string') continue
+    const first = ck.split(';')[0].trim()
+    if (first && first.includes('=')) pairs.push(first)
+  }
+  return pairs.join('; ')
+}
+
+// cookie 对象里有没有非空的 MUSIC_U（网易登录会话）
+function hasMusicU(cookie: unknown): boolean {
+  return (
+    !!cookie &&
+    typeof cookie === 'object' &&
+    typeof (cookie as any).MUSIC_U === 'string' &&
+    (cookie as any).MUSIC_U.length > 0
+  )
+}
+
+// 把 cookie 对象序列化回 name=value; name=value
+function serializeCookieObj(cookie: unknown): string {
+  if (!cookie || typeof cookie !== 'object') return ''
+  const pairs: string[] = []
+  for (const [k, v] of Object.entries(cookie as Record<string, unknown>)) {
+    if (typeof v === 'string' && v) pairs.push(k + '=' + v)
+  }
+  return pairs.join('; ')
+}
+
 for (const { route, module: moduleFn } of neteaseRoutes) {
   neteaseApp.all(route, async (c) => {
     // 边缘身份懒初始化（deviceId 与随机中国 IP，第一次请求时生成）
@@ -94,11 +127,23 @@ for (const { route, module: moduleFn } of neteaseRoutes) {
     }
     const queryCookie = (queryParams as any).cookie
     const bodyCookie = (bodyObj as any).cookie
-    const cookie = hasCookie(bodyCookie)
+    let cookie: any = hasCookie(bodyCookie)
       ? bodyCookie
       : hasCookie(queryCookie)
         ? queryCookie
         : headerCookie
+    // 请求没带 cookie 时，用存着的用户登录态（扫码/手机号登录后存进 KV）
+    if (!hasCookie(cookie)) {
+      const stored = await getUserCookie()
+      if (stored) cookie = cookieToJson(stored)
+    }
+    // 请求带了有效的登录 cookie（MUSIC_U）时顺手存下来：首次用上、换号
+    // 都覆盖；这样登录过的会话不用再扫码也能被后续请求认出来。
+    if (hasMusicU(cookie)) {
+      const pairs = serializeCookieObj(cookie)
+      const stored = await getUserCookie()
+      if (pairs && pairs !== stored) await setUserCookie(pairs)
+    }
     const query = Object.assign({}, queryParams, bodyObj, { cookie })
 
     // request 包装：与原版一致，注入 IP（randomCNIP 时用随机中国 IP，
@@ -119,6 +164,25 @@ for (const { route, module: moduleFn } of neteaseRoutes) {
     try {
       const moduleResponse = await moduleFn(query, requestWrapper)
       const cookies = moduleResponse.cookie
+      // 登录成功时把服务端发回的会话 cookie 存进 KV：扫码成功 code 803，
+      // 手机号登录/刷新成功 code 200；进行中的扫码（801/802）不带有效
+      // MUSIC_U，不会误存。
+      if (Array.isArray(cookies) && cookies.length) {
+        const pairs = extractCookiePairs(cookies)
+        const bodyCode = (moduleResponse.body as any)?.code
+        if (
+          pairs.includes('MUSIC_U=') &&
+          (bodyCode === 803 || bodyCode === 200)
+        ) {
+          const stored = await getUserCookie()
+          if (pairs !== stored) await setUserCookie(pairs)
+        }
+      }
+      // 退出登录成功时清掉存着的会话，避免之后又把已失效的 cookie 注回去
+      if (route === '/logout') {
+        const bodyCode = (moduleResponse.body as any)?.code
+        if (bodyCode === 200) await setUserCookie('')
+      }
       if (moduleResponse.redirectUrl) {
         return c.redirect(
           moduleResponse.redirectUrl,
