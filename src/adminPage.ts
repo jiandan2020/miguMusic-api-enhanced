@@ -95,7 +95,7 @@ audio { width: 100%; margin-top: 10px; }
 <header class="page-head">
 <p class="eyebrow">MUSIC · ADMIN</p>
 <h1>音乐 API 管理</h1>
-<p class="intro">migu.api.xzccs.top · 咪咕与网易云</p>
+<p class="intro">咪咕与网易云</p>
 </header>
 <section class="card" id="gate">
 <h2>输入 Key 进入</h2>
