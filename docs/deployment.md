@@ -65,6 +65,17 @@ USE_DATABASE=true
 | `GET /migu/passport/checkToken` | 不传 `pacmtoken` 时验 KV 里存的会话 |
 | `GET /migu/passport/logout` | 退出登录；退出的是存量会话且咪咕确认成功时，清掉 KV 里的登录态 |
 
+## 管理界面
+
+打开 `https://<域名>/miguadmin`，输入 `API_KEY` 进入（页面本身公开，里面的
+数据请求都要带 Key 校验后才能看到内容；Key 只存在当前标签页的
+sessionStorage，关闭即清除）。
+
+面板内容：会话状态（可立即刷新、退出登录）、当前用户信息、会员等级
+（`userMemberInfos` 与 `userLevelInfo`）、播放测试（搜歌后自选接口
+v1 / v2 / h5v2.4 与音质 toneFlag，显示播放链接并可直接试播）、接口状态。
+页面实现在 `src/adminPage.ts`（单文件 HTML），路由在 `src/app.ts`。
+
 ### CORS 配置规则
 
 - 有 `.env` 文件，并且设置 `ALLOWED_ORIGINS`为空：拒绝所有跨域请求

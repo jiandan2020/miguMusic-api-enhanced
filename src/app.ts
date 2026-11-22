@@ -7,6 +7,7 @@ import { getEnv } from './utils/env';
 import { methodNotAllowed } from 'hono/method-not-allowed';
 import { apiAuth } from './middleware/auth';
 import apiRoutes from './routers/index';
+import { adminPageHtml } from './adminPage';
 
 // 通过 import 引入 package.json，esbuild / tsup 在构建时会将 JSON 内联到产物中
 // 这样在 Node、Cloudflare Workers、Vercel Edge、Deno、EdgeOne 等所有 bundler 平台都能直接读取版本号
@@ -115,6 +116,15 @@ app.get('/migu/status', c => {
         dbEnabled: USE_DATABASE,
         allowedOrigins: ALLOWED_ORIGINS,
     });
+});
+
+// 管理页面（单文件 HTML，见 src/adminPage.ts）：页面本身公开，
+// 里面的数据请求都要带 Key 校验后才能看到内容。
+app.get('/miguadmin', (c) => {
+    return c.html(adminPageHtml);
+});
+app.get('/miguadmin/', (c) => {
+    return c.html(adminPageHtml);
 });
 
 // API 路由
