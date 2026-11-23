@@ -1,6 +1,6 @@
 # 定时刷新 KV 里存的咪咕登录态（pacmtoken 保活）
 #
-# 每 6 小时两步走：
+# 每 2 小时两步走：
 #   1. 调 /migu/passport/refresh 验活：
 #      - token 还活着 → 继续；
 #      - token 死了 → 接口返回 session_dead，本任务失败，提醒手动重新登录一次。
@@ -16,8 +16,8 @@ name: 刷新 pacmtoken
 
 on:
   schedule:
-    # 每 6 小时的第 17 分钟（UTC）
-    - cron: '17 */6 * * *'
+    # 每 2 小时的第 17 分钟（UTC）
+    - cron: '17 */2 * * *'
   workflow_dispatch:
 
 jobs:
